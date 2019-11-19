@@ -1,10 +1,10 @@
 'use strict';
 const ccxt = require ('ccxt');
 const config = require('./config');
-const autocoin = new ccxt.bitflyer (config);
+const bitflyer = new ccxt.bitflyer (config);
 
 const interval = 30000;
-const profitPrice = 500;
+const diffPrice = 500;
 const orderSize = 0.01;
 const records = [];
 
@@ -20,7 +20,7 @@ const sleep = (timer) => {
 
 (async function () {
   while (true){
-    const ticker = await autocoin.fetchTicker ('FX_BTC_JPY');
+    const ticker = await bitflyer.fetchTicker ('FX_BTC_JPY');
     records.push(ticker.ask);
     if (records.length > 3){
       records.shift()
@@ -32,20 +32,20 @@ const sleep = (timer) => {
       console.log('order price: ' + orderInfo.price);
       console.log('diff: ' + ticker.bid - orderInfo.price);
 
-      if (ticker.bid - orderInfo.price > profitPrice) {
-        const order = await autocoin.createMarketSellOrder ('FX_BTC_JPY', orderSize);
+      if (ticker.bid - orderInfo.price > diffPrice) {
+        const order = await bitflyer.createMarketSellOrder ('FX_BTC_JPY', orderSize);
         orderInfo = null;
         console.log('利確しました', order);
 
-      } else if (ticker.bid - orderInfo.price < profitPrice) {
-        const order = await autocoin.createMarketSellOrder ('FX_BTC_JPY', orderSize);
+      } else if (ticker.bid - orderInfo.price < diffPrice) {
+        const order = await bitflyer.createMarketSellOrder ('FX_BTC_JPY', orderSize);
         orderInfo = null;
         console.log('ロスカットしました', order);
       }
 
     } else {
       if (records[0] < records[1] && records[1] < records[2] ){
-        const order = await autocoin.createMarketBuyOrder ('FX_BTC_JPY', orderSize);
+        const order = await bitflyer.createMarketBuyOrder ('FX_BTC_JPY', orderSize);
         orderInfo = {
           order: order,
           price: ticker.ask
