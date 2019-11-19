@@ -1,0 +1,17 @@
+{
+  "name": "bitcoin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "test.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "request": "^2.88.0"
+  },
+  "dependencies": {
+    "ccxt": "^1.18.1304"
+  }
+}
