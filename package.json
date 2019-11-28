@@ -1,8 +1,8 @@
 {
-  "name": "bitcoin",
+  "name": "autocoin",
   "version": "1.0.0",
   "description": "",
-  "main": "test.js",
+  "main": "autocoin.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -12,6 +12,7 @@
     "request": "^2.88.0"
   },
   "dependencies": {
-    "ccxt": "^1.18.1304"
+    "ccxt": "^1.18.1304",
+    "gauss": "^0.2.12"
   }
 }
