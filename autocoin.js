@@ -86,6 +86,25 @@ const sleep = (timer) => {
     }
     console.log('countHigh:', countHigh);
 
+    //スワップポイント対応 23:55-0:05
+    let nowHour = nowTime.getHours();
+    let nowMinute = nowTime.getMinutes();
+    if ((nowHour === 23 && nowMinute >= 55) || (nowHour === 0 && nowMinute <= 5)){
+      console.log(' ');
+      console.log('スワップポイント対応中_23:55-0:05');
+      //買建玉を成行で売る、注文を受け付けない
+      if (orderInfo) {
+        const order = await bitflyer.createMarketSellOrder ('FX_BTC_JPY', orderSize);
+        orderInfo = null;
+        console.log('スワップ対応で成行売り:', order);
+      }
+
+      //  whileの先頭に
+      console.log(' ');
+      await sleep(interval);
+      continue;
+    }
+
     if (orderInfo) {
       console.log('latest price:', ticker.bid);
       console.log('order price: ', orderInfo.price);

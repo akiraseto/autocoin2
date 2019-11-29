@@ -46,9 +46,9 @@ periodsに秒数をいれることで間隔を設定 1時間3600 1日86400
 無料枠  
 cpu allowance  = 4秒 /1時間
 
-OHLC  ローソク足のこと
+OHLC ローソク足のこと  
 open high low close
-始値 高値 低値 終値   をチャートにするって意味
+始値 高値 低値 終値   をチャートにするって意味  
 ローソク足→Candle Chartの欧米正式名称
 
 ## gauss
