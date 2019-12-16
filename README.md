@@ -16,14 +16,16 @@ BitflyerのAPIを利用して、node.jsにて仮想通貨トレードを自動�
     - 成行注文
 
 - 売り注文判断 OR
-    - 利確  指値で購入価格の0.16%
-    - ロスカット  指値で購入価格の-0.08%
+    - 利確  指値で購入価格の数%
+    - ロスカット  指値で購入価格の-数%
     - 5回中4回が下降だった場合、即成行きで売る
-    (デッドクロスを待つと利益下回りそう)
     - デッドクロス  成行きで即売り
     (下がる兆候が強い、上がる見込みが無いため確定する)
 
-
+- スワップポイント対策  
+23:55-0:05の間
+    - 注文を受け付けない
+    - 買建玉を成行で売る
 
 ## ccxt
 bitflyerのAPIラッパー  
@@ -55,3 +57,44 @@ open high low close
 移動平均計算ライブラリ  
 [https://github.com/fredrick/gauss](https://github.com/fredrick/gauss)
 
+## MongoDB
+MongoDBを利用して売買ログを記録
+
+db名:autocoin
+collection名: btcfx
+
+### Mac
+構築手順
+
+```shell
+
+brew install mongodb
+
+#自動起動に設定
+brew services start mongodb
+
+```
+
+### Ubuntu18.04
+構築手順
+
+```shell
+
+#パッケージ管理システムに公開鍵を登録
+sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
+
+#ダウンロード用のリストファイルを作成
+echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.0.list
+
+#パッケージ管理システムのデータベースをリロード
+sudo apt-get update
+
+#最新の安定版をインストール
+sudo apt-get install -y mongodb-org
+
+#MongoDBを自動起動にする
+sudo systemctl enable mon
+
+#MongoDBを起動
+sudo service mongod start
+```
