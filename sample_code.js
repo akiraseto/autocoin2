@@ -4,11 +4,30 @@ const config = require('./config');
 const bitflyer = new ccxt.bitflyer (config);
 
 (async function () {
-  console.log (bitflyer.id,    await bitflyer.loadMarkets ());
+  // console.log (bitflyer.id,    await bitflyer.loadMarkets ());
 
   // console.log (bitflyer.id,  await bitflyer.fetchTicker ('FX_BTC_JPY'));
 
+  //資産情報
   // console.log (bitflyer.id, await bitflyer.fetchBalance ())
+
+  //全取引情報
+  // console.log (bitflyer.id, await bitflyer.fetchMyTrades('FX_BTC_JPY'));
+
+  //FX/Futures 証拠金変動履歴
+  // console.log (bitflyer.id, await bitflyer.fetch2('getcollateralhistory','private', 'GET'));
+
+  //FX/Futures 証拠金
+  // console.log (bitflyer.id, await bitflyer.fetch2('getcollateral','private', 'GET'));
+
+  //値段取得
+  // console.log (bitflyer.id, await bitflyer.fetchTicker ('FX_BTC_JPY'));
+
+  console.log (bitflyer.id, await bitflyer.fetch2('getboardstate'));
+
+
+  //銀行口座
+  // console.log (bitflyer.id, await bitflyer.fetch2('getbankaccounts','private', 'GET'));
 
   // sell 1 BTC/USD for market price, sell a bitcoin for dollars immediately
   // console.log (bitflyer.id, await bitflyer.createMarketBuyOrder ('FX_BTC_JPY', 0.01));
