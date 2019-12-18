@@ -27,6 +27,9 @@ BitflyerのAPIを利用して、node.jsにて仮想通貨トレードを自動�
     - 注文を受け付けない
     - 買建玉を成行で売る
 
+- LineNotifyのお知らせ機能  
+    節目の金額ごと(alertUnit)にLineNotifyで自動通知する
+
 ## ccxt
 bitflyerのAPIラッパー  
 ccxtモジュールを通してbitflyerからLTP取得、売買の通信を行う
@@ -93,8 +96,27 @@ sudo apt-get update
 sudo apt-get install -y mongodb-org
 
 #MongoDBを自動起動にする
-sudo systemctl enable mon
+sudo systemctl enable mongod
 
 #MongoDBを起動
 sudo service mongod start
+```
+
+## LineNotify
+accessTokenを発行して、Lineでお知らせを受け取る。  
+[https://notify-bot.line.me/ja/](https://notify-bot.line.me/ja/)
+
+## config.js
+Gitで共有していない、key,passwordなどの設定ファイル。  
+以下の内容となる。
+
+config.js
+
+```js
+module.exports = {
+  apiKey: 'bitflyerのapikey',
+  secret: 'bitflyerのsecret',
+  line_token: 'lineNotifyのアクセストークン'
+};
+
 ```
