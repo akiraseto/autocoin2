@@ -1,19 +1,18 @@
 'use strict';
 const config = require('./config');
 const request = require('request');
+const moment = require('moment');
 const gauss = require('gauss');
 const ccxt = require ('ccxt');
 const bitflyer = new ccxt.bitflyer (config);
 const MongoClient = require('mongodb').MongoClient;
 
-const interval = 60000;
+//Ratioは変更の可能性あり
+const profitRatio = 0.001;
+const lossRatio  = -0.001;
 const orderSize = 0.01;
-
-const profitRatio = 0.0004;
-const lossRatio  = -0.0008;
 const chkPriceCount = 5;
-let records = [];
-let orderInfo = null;
+const interval = 60000;
 
 // MongoDB設定
 const dbOptions = {
@@ -23,12 +22,13 @@ const dbOptions = {
 const dbUrl = 'mongodb://localhost:27017';
 const dbName = 'autocoin';
 const cName = 'btcfx';
-let tradeLog = null;
 
-/*
-cryptowatchの設定
-*/
-//市場
+//lineNotifyの設定
+const alertUnit = 10;
+const linUri = 'https://notify-api.line.me/api/notify';
+const lineToken = config.line_token;
+
+//cryptowatchの設定
 const markets = 'bitflyer';
 const instrument = 'btcfxjpy';
 //取引間隔
@@ -38,10 +38,10 @@ const shortMA = 5;
 const longMA = 30;
 
 const beforeHour = longMA * 60;
-const timeStamp = Math.round((new Date()).getTime() / 1000) - beforeHour;
+const timeStamp = moment().unix() - beforeHour;
 const uri = `https://api.cryptowat.ch/markets/${markets}/${instrument}/ohlc?periods=${periods}&after=${timeStamp}`;
 
-//起動時にcryptowatchから値を取得
+//起動時cryptowatchから値取得
 const getCryptowatch = () => {
   return new Promise((resolve) => {
     request(uri,(err, response, body) => {
@@ -61,23 +61,46 @@ const sleep = (timer) => {
 
 //MongoDB Create
 const insertDocuments = (db, object) => {
-  /** collectionを取得 */
+  //collection取得
   const collection = db.collection(cName);
-  /** collectionにdocumentを追加 */
+  //collectionにdocument追加
   collection.insertOne(object,
       (err, result) => {
-        /** 成功した旨をコンソールに出力 */
+        //成功を出力
         console.log('DBに書き込み');
       }
   );
 };
 
+//LineNotifyへPOST
+const LineNotify = (strTime, sumProfit, profit, collateral) => {
+  return new Promise((resolve) => {
+    let options = {
+      uri: linUri,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Bearer ${lineToken}`
+      },
+      form: {
+        message: `\n date: ${strTime}\n sumProfit: ${sumProfit}\n profit: ${profit}\n collateral: ${collateral}`
+      }
+    };
+    request(options,(err, response, body) => {
+      resolve(JSON.parse(body))
+    });
+  })
+};
+
 (async function () {
   let sumProfit = 0;
+  let baseProfit = null;
+  let orderInfo = null;
+  let tradeLog = null;
   const json = await getCryptowatch();
   let list = json.result[periods];
   let closePrice = list.map(entry => entry[4]);
-  records = closePrice.splice(closePrice.length - longMA, closePrice.length);
+  let records = closePrice.splice(closePrice.length - longMA, closePrice.length);
 
   while (true){
     console.log('================');
@@ -86,16 +109,16 @@ const insertDocuments = (db, object) => {
     let label = "";
     let priceDiff = null;
     let ratio = null;
-    let profit = null;
-    let nowTime = new Date();
-    let strTime = nowTime.toLocaleString('ja-JP',{ hour12: false });
+    let profit = 0;
+    const nowTime = moment();
+    const strTime = nowTime.format('YYYY/MM/DD HH:mm:ss');
     console.log('time:', strTime);
 
     //取引所の稼働状況を確認
     let health = await bitflyer.fetch2('getboardstate');
-    if (!(health.health === 'NORMAL' || health.health === 'BUSY' || health.health === 'VERY BUSY')) {
+    if (health.state !== 'RUNNING') {
       // 以上ならwhileの先頭に
-      console.log('取引所の稼働状況:', health.health);
+      console.log('取引所の稼働状況:', health);
       await sleep(interval);
       continue;
     }
@@ -107,13 +130,13 @@ const insertDocuments = (db, object) => {
     }
 
     const prices = new gauss.Vector(records);
-    let shortValue = prices.ema(shortMA).pop();
-    let longValue = prices.ema(longMA).pop();
+    const shortValue = prices.ema(shortMA).pop();
+    const longValue = prices.ema(longMA).pop();
 
     let countHigh = 0;
     for (let i=chkPriceCount; i>0; i--) {
-      let before = records[records.length -i -1];
-      let after = records[records.length -i];
+      const before = records[records.length -i -1];
+      const after = records[records.length -i];
 
       if (before <= after){
         countHigh += 1;
@@ -121,15 +144,15 @@ const insertDocuments = (db, object) => {
     }
 
     //スワップポイント対応 23:55-0:05
-    let nowHour = nowTime.getHours();
-    let nowMinute = nowTime.getMinutes();
+    const nowHour = nowTime.hours();
+    const nowMinute = nowTime.minute();
     if ((nowHour === 23 && nowMinute >= 55) || (nowHour === 0 && nowMinute <= 5)){
       console.log(' ');
       console.log('スワップポイント対応中_23:55-0:05');
       //買建玉を成行で売る、注文を受け付けない
       if (orderInfo) {
         order = await bitflyer.createMarketSellOrder ('FX_BTC_JPY', orderSize);
-        profit = (ticker.bid - orderInfo.price) * orderSize;
+        profit = Math.round((ticker.bid - orderInfo.price) * orderSize * 10) / 10;
         sumProfit += profit;
         orderInfo = null;
         flag = 'sell';
@@ -145,7 +168,7 @@ const insertDocuments = (db, object) => {
     if (orderInfo) {
       priceDiff = ticker.bid - orderInfo.price;
       ratio = ticker.bid / orderInfo.price -1;
-      profit = (ticker.bid - orderInfo.price) * orderSize;
+      profit = Math.round((ticker.bid - orderInfo.price) * orderSize * 10) / 10;
       console.log('latest price:', ticker.bid);
       console.log('order price: ', orderInfo.price);
       console.log('diff: ', priceDiff);
@@ -181,7 +204,7 @@ const insertDocuments = (db, object) => {
     } else {
       /*
       買い注文判断
-       ローソク足が陽線が多く、かつゴールデンクロスしている
+       ローソク足が陽線が多く、かつゴールデンクロス
       */
       if (countHigh > 2 && shortValue > longValue){
         order = await bitflyer.createMarketBuyOrder ('FX_BTC_JPY', orderSize);
@@ -195,6 +218,7 @@ const insertDocuments = (db, object) => {
     }
 
     const collateral = await bitflyer.fetch2('getcollateral','private', 'GET');
+    sumProfit = Math.round(sumProfit * 10) / 10;
     console.log('sum profit:', sumProfit);
     console.log('collateral:',collateral.collateral );
 
@@ -205,7 +229,7 @@ const insertDocuments = (db, object) => {
         tradeLog = {
           flag: flag,
           label: label,
-          created_at: nowTime,
+          created_at: nowTime._d,
           strTime: strTime,
           price: orderInfo.price,
           shortMA: shortValue,
@@ -217,7 +241,7 @@ const insertDocuments = (db, object) => {
         tradeLog = {
           flag: flag,
           label: label,
-          created_at: nowTime,
+          created_at: nowTime._d,
           strTime: strTime,
           price: ticker.bid,
           shortMA: shortValue,
@@ -264,6 +288,23 @@ const insertDocuments = (db, object) => {
       console.log('longMA :',longValue);
       console.log('countHigh:', countHigh);
     }
+
+    // LineNotifyに通知(設定閾値を超えたら)
+    if (baseProfit !== null){
+      if (flag === 'sell') {
+        //sell済みなのでsumProfitと被るprofitを初期化
+        profit = 0;
+      }
+      const diff = Math.abs(sumProfit - baseProfit + profit);
+      if(diff >= alertUnit){
+        await LineNotify(strTime, sumProfit, profit, collateral.collateral);
+        baseProfit = sumProfit;
+      }
+    }else{
+      //アラート初期化
+      baseProfit = sumProfit;
+    }
+
     await sleep(interval);
   }
 
