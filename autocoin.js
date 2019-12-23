@@ -8,8 +8,8 @@ const bitflyer = new ccxt.bitflyer (config);
 const MongoClient = require('mongodb').MongoClient;
 
 //Ratioは変更の可能性あり
-const profitRatio = 0.001;
-const lossRatio  = -0.001;
+const profitRatio = 0.0005;
+const lossRatio = -0.001;
 const orderSize = 0.01;
 const chkPriceCount = 5;
 const interval = 60000;
@@ -73,7 +73,7 @@ const insertDocuments = (db, object) => {
 };
 
 //LineNotifyへPOST
-const LineNotify = (strTime, sumProfit, profit, collateral) => {
+const LineNotify = (message) => {
   return new Promise((resolve) => {
     let options = {
       uri: linUri,
@@ -83,7 +83,7 @@ const LineNotify = (strTime, sumProfit, profit, collateral) => {
         'Authorization': `Bearer ${lineToken}`
       },
       form: {
-        message: `\n date: ${strTime}\n sumProfit: ${sumProfit}\n profit: ${profit}\n collateral: ${collateral}`
+        message: message
       }
     };
     request(options,(err, response, body) => {
@@ -102,7 +102,15 @@ const LineNotify = (strTime, sumProfit, profit, collateral) => {
   let closePrice = list.map(entry => entry[4]);
   let records = closePrice.splice(closePrice.length - longMA, closePrice.length);
 
-  while (true){
+  //Lineに自動売買スタートを通知
+  const nowTime = moment();
+  const strTime = nowTime.format('YYYY/MM/DD HH:mm:ss');
+  const collateral = await bitflyer.fetch2('getcollateral', 'private', 'GET');
+  const message = `\n 自動売買スタート\n date: ${strTime}\n collateral: ${collateral.collateral}`;
+
+  LineNotify(message);
+
+  while (true) {
     console.log('================');
     let order = null;
     let flag = null;
@@ -167,7 +175,7 @@ const LineNotify = (strTime, sumProfit, profit, collateral) => {
 
     if (orderInfo) {
       priceDiff = ticker.bid - orderInfo.price;
-      ratio = ticker.bid / orderInfo.price -1;
+      ratio = ticker.bid / orderInfo.price - 1;
       profit = Math.round((ticker.bid - orderInfo.price) * orderSize * 10) / 10;
       console.log('latest price:', ticker.bid);
       console.log('order price: ', orderInfo.price);
@@ -175,18 +183,18 @@ const LineNotify = (strTime, sumProfit, profit, collateral) => {
       console.log('ratio: ', ratio);
       console.log('profit:', profit);
 
-      //売り注文:4/5下落or デッドクロスなら即売る
-      if (countHigh < 2 || shortValue < longValue){
-        order = await bitflyer.createMarketSellOrder ('FX_BTC_JPY', orderSize);
+      //売り注文:5/5下落or デッドクロスなら即売る
+      if (countHigh < 1 || shortValue < longValue) {
+        order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
         sumProfit += profit;
         orderInfo = null;
         flag = 'sell';
         label = '下落兆候が強いため売り';
 
-      }else {
-      //  利確、ロスカット
+      } else {
+        //  利確、ロスカット
         if (ticker.bid - orderInfo.price > orderInfo.price * profitRatio) {
-          order = await bitflyer.createMarketSellOrder ('FX_BTC_JPY', orderSize);
+          order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
           sumProfit += profit;
           orderInfo = null;
           flag = 'sell';
@@ -296,8 +304,10 @@ const LineNotify = (strTime, sumProfit, profit, collateral) => {
         profit = 0;
       }
       const diff = Math.abs(sumProfit - baseProfit + profit);
-      if(diff >= alertUnit){
-        await LineNotify(strTime, sumProfit, profit, collateral.collateral);
+      if(diff >= alertUnit) {
+        const message = `\n date: ${strTime}\n sumProfit: ${sumProfit}\n profit: ${profit}\n collateral: ${collateral.collateral}`;
+
+        LineNotify(message);
         baseProfit = sumProfit;
       }
     }else{
