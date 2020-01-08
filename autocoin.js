@@ -183,8 +183,8 @@ const LineNotify = (message) => {
       console.log('ratio: ', ratio);
       console.log('profit:', profit);
 
-      //売り注文:5/5下落or デッドクロスなら即売る
-      if (countHigh < 1 || shortValue < longValue) {
+      //売り注文:陰線が多い or デッドクロスなら即売る
+      if (countHigh <= 1 || shortValue < longValue) {
         order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
         sumProfit += profit;
         orderInfo = null;
@@ -214,8 +214,8 @@ const LineNotify = (message) => {
       買い注文判断
        ローソク足が陽線が多く、かつゴールデンクロス
       */
-      if (countHigh > 2 && shortValue > longValue){
-        order = await bitflyer.createMarketBuyOrder ('FX_BTC_JPY', orderSize);
+      if (countHigh >= 3 && shortValue > longValue) {
+        order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', orderSize);
         orderInfo = {
           order: order,
           price: ticker.ask

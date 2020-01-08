@@ -99,3 +99,5 @@ dist
 .idea
 
 config.js
+/startAWS.sh
+/stopAWS.sh
