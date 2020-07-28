@@ -1,4 +1,14 @@
-# autocoin
+# autocoin2
+
+- Docker化
+- TDD
+- オブジェクト指向
+
+- Line Chat制御
+- アルゴリズム追加・改良
+
+
+---
 
 BitflyerのAPIを利用して、node.jsにて仮想通貨トレードを自動化する。
 
