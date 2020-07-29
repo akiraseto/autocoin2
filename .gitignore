@@ -98,6 +98,6 @@ dist
 # Editor directories and files
 .idea
 
-config.js
+autocoin/config.js
 /startAWS.sh
 /stopAWS.sh
