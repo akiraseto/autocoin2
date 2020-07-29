@@ -1,8 +1,8 @@
 {
-  "name": "autocoin",
+  "name": "autocoin2",
   "version": "1.0.0",
   "description": "",
-  "main": "autocoin.js",
+  "main": "autocoin/autocoin.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
