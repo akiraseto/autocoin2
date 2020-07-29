@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  node:
+    build: .
+    container_name: node
+    tty: true
+    volumes:
+      - ./autocoin:/autocoin
+
