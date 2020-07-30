@@ -5,7 +5,7 @@
   "main": "autocoin/autocoin.js",
   "scripts": {
     "test": "jest",
-    "test_ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit"
+    "ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit"
   },
   "author": "",
   "license": "ISC",
