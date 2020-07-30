@@ -14,7 +14,9 @@ jobs:
 
       - run:
           name: install dependencies
-          command: npm install
+          command: |
+            npm install
+            npm install jest
 
       - save_cache:
           paths:
@@ -25,7 +27,8 @@ jobs:
       - run:
           name: run tests
           command: |
-            jest --config-- __test__/jest.config.js --ci --runInBand --reporters=default --reporters=jest-junit
+            jest
+          #            jest  --ci --runInBand --reporters=default --reporters=jest-junit
           environment:
             JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
 
