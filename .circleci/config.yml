@@ -35,14 +35,13 @@ jobs:
           command: npm install
       - run:
           name: unit test
-          command: npm ci
-
+          command: npm test
           environment:
-            JEST_JUNIT_OUTPUT_DIR: reports/junit/
+            JEST_JUNIT_OUTPUT_DIR: test-reports
       - store_test_results:
-          path: reports/junit/
+          path: test-reports
       - store_artifacts:
-          path: reports/junit/
+          path: test-reports
 
 workflows:
   version: 2

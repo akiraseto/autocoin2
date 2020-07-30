@@ -4,8 +4,7 @@
   "description": "",
   "main": "autocoin/autocoin.js",
   "scripts": {
-    "test": "jest",
-    "ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit"
+    "test": "jest --ci --runInBand --reporters=default --reporters=jest-junit"
   },
   "author": "",
   "license": "ISC",
@@ -21,4 +20,3 @@
     "mongodb": "^3.3.5"
   }
 }
-
