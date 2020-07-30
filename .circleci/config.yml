@@ -1,41 +1,69 @@
 version: 2.1
+orbs:
+  node: circleci/node@1.1.6
 jobs:
-  build:
-    #    parallelism: 1
-    docker:
-      - image: circleci/node:12
-
+  build-and-test:
+    executor:
+      name: node/default
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
-            - v1-dependencies-{{ .Branch }}
-
-      - run:
-          name: install dependencies
-          command: |
-            npm install
-
-      - save_cache:
-          paths:
-            - node_modules
-          key: v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
+      - node/with-cache:
+          steps:
+            - run: npm install
+            - run: npm test
+workflows:
+  build-and-test:
+    jobs:
+      - build-and-test
 
 
-      - run:
-          name: run tests
-          command: |
-#            jest
-            npm test
-          #            jest  --ci --runInBand --reporters=default --reporters=jest-junit
-#          environment:
-#            JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
 
-#      - store_test_results:
-#          path: test-reports
-
-
+#
+#
+#
+#
+#
+#
+#
+#
+#version: 2.1
+#jobs:
+#  build:
+#    #    parallelism: 1
+#    docker:
+#      - image: circleci/node:12
+#
+#    steps:
+#      - checkout
+#      - restore_cache:
+#          keys:
+#            - v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
+#            - v1-dependencies-{{ .Branch }}
+#
+#      - run:
+#          name: install dependencies
+#          command: |
+#            npm install
+#
+#      - save_cache:
+#          paths:
+#            - node_modules
+#          key: v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
+#
+#
+#      - run:
+#          name: run tests
+#          command: |
+##            jest
+#            npm test
+#          #            jest  --ci --runInBand --reporters=default --reporters=jest-junit
+##          environment:
+##            JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
+#
+##      - store_test_results:
+##          path: test-reports
+#
+#
 
 
 

@@ -101,3 +101,4 @@ dist
 autocoin/config.js
 /startAWS.sh
 /stopAWS.sh
+/junit.xml
