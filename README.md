@@ -1,7 +1,5 @@
 # autocoin2
 
-- Docker化
-- TDD
 - オブジェクト指向
 
 - Line Chat制御
