@@ -16,6 +16,10 @@ jobs:
     environment:
       JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
 
+        - store_test_results:
+            path: reports/junit
+
+
 workflows:
   build-and-test:
     jobs:
