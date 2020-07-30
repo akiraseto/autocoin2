@@ -37,8 +37,7 @@ jobs:
           command: npm install
       - run:
           name: unit test
-          #          command: npm test
-          command: bin/jest --ci --runInBand --reporters=default --reporters=jest-junit
+          command: npm test
           environment:
             JEST_JUNIT_OUTPUT_DIR: test-reports
       - store_test_results:
