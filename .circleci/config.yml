@@ -26,7 +26,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            jest
+#            jest
             npm test
           #            jest  --ci --runInBand --reporters=default --reporters=jest-junit
 #          environment:
