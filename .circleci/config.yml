@@ -1,7 +1,7 @@
-version: 2
+version: 2.1
 jobs:
   build:
-    parallelism: 1
+    #    parallelism: 1
     docker:
       - image: circleci/node:12
 
@@ -16,11 +16,10 @@ jobs:
           name: install dependencies
           command: |
             npm install
-            npm install jest
 
       - save_cache:
           paths:
-            - ./node_modules
+            - node_modules
           key: v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
 
 
@@ -28,9 +27,10 @@ jobs:
           name: run tests
           command: |
             jest
+            npm test
           #            jest  --ci --runInBand --reporters=default --reporters=jest-junit
-          environment:
-            JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
+#          environment:
+#            JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
 
 #      - store_test_results:
 #          path: test-reports
