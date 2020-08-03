@@ -102,3 +102,4 @@ autocoin/config.js
 /startAWS.sh
 /stopAWS.sh
 /junit.xml
+container_data

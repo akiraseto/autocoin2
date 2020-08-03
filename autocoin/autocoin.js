@@ -1,4 +1,5 @@
 'use strict';
+require('dotenv').config()
 const config = require('./config');
 const request = require('request');
 const moment = require('moment');
@@ -19,7 +20,14 @@ const dbOptions = {
   useUnifiedTopology : true,
   useNewUrlParser : true
 };
-const dbUrl = 'mongodb://localhost:27017';
+
+const mongo_user = process.env.MONGO_INITDB_ROOT_USERNAME;
+const mongo_pw = process.env.MONGO_INITDB_ROOT_PASSWORD;
+//todo:ダミー最終で消す
+// const mongo_user = 'eren';
+// const mongo_pw = 'yeager';
+const dbUrl = `mongodb://${mongo_user}:${mongo_pw}@mongo:27017`;
+
 const dbName = 'autocoin';
 const cName = 'btcfx';
 

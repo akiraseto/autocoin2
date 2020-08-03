@@ -23,6 +23,7 @@ const bitflyer = new ccxt.bitflyer (config);
   //値段取得
   // console.log (bitflyer.id, await bitflyer.fetchTicker ('FX_BTC_JPY'));
 
+  //状態確認
   console.log (bitflyer.id, await bitflyer.fetch2('getboardstate'));
 
 

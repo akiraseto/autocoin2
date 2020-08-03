@@ -5,6 +5,20 @@ services:
     build: .
     container_name: node
     tty: true
+    env_file: ./mongo/.env
     volumes:
       - ./autocoin:/autocoin
+    depends_on:
+      - mongo
 
+  mongo:
+    image: mongo
+    container_name: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: autocoin
+    env_file: ./mongo/.env
+    ports:
+      - 27017:27017
+    volumes:
+      - ./container_data/db:/data/db
