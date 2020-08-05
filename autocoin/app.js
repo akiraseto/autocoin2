@@ -6,11 +6,12 @@ const gauss = require('gauss');
 const ccxt = require ('ccxt');
 const bitflyer = new ccxt.bitflyer (config);
 
-const mongo = require('./mongo');
-const mongodb = new mongo();
+const mongo_class = require('./mongo');
+const mongo = new mongo_class();
+const line_class = require('./line');
+const line = new line_class()
 
 const algo = require('./algo');
-const line = require('./line');
 
 //Ratioは変更の可能性あり
 const profitRatio = 0.0005;
@@ -21,8 +22,6 @@ const interval = 60000;
 
 //lineNotifyの設定
 const alertUnit = 10;
-const linUri = 'https://notify-api.line.me/api/notify';
-const lineToken = config.line_token;
 
 //cryptowatchの設定
 const markets = 'bitflyer';
@@ -55,26 +54,6 @@ const sleep = (timer) => {
   })
 };
 
-//LineNotifyへPOST
-const LineNotify = (message) => {
-  return new Promise((resolve) => {
-    let options = {
-      uri: linUri,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Bearer ${lineToken}`
-      },
-      form: {
-        message: message
-      }
-    };
-    request(options,(err, response, body) => {
-      resolve(JSON.parse(body))
-    });
-  })
-};
-
 (async function () {
   let sumProfit = 0;
   let baseProfit = null;
@@ -90,8 +69,7 @@ const LineNotify = (message) => {
   const strTime = nowTime.format('YYYY/MM/DD HH:mm:ss');
   const collateral = await bitflyer.fetch2('getcollateral', 'private', 'GET');
   const message = `\n 自動売買スタート\n date: ${strTime}\n collateral: ${collateral.collateral}`;
-
-  LineNotify(message);
+  line.notify(message);
 
   while (true) {
     console.log('================');
@@ -249,7 +227,7 @@ const LineNotify = (message) => {
         };
       }
 
-      mongodb.insert(tradeLog);
+      mongo.insert(tradeLog);
 
       console.log('');
       console.log('tradeLog:',tradeLog);
@@ -274,7 +252,7 @@ const LineNotify = (message) => {
       if(diff >= alertUnit) {
         const message = `\n date: ${strTime}\n sumProfit: ${sumProfit}\n profit: ${profit}\n collateral: ${collateral.collateral}`;
 
-        LineNotify(message);
+        line.notify(message);
         baseProfit = sumProfit;
       }
     }else{
