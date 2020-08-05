@@ -1,12 +1,16 @@
 'use strict';
-require('dotenv').config()
 const config = require('./config');
 const request = require('request');
 const moment = require('moment');
 const gauss = require('gauss');
 const ccxt = require ('ccxt');
 const bitflyer = new ccxt.bitflyer (config);
-const MongoClient = require('mongodb').MongoClient;
+
+const mongo = require('./mongo');
+const mongodb = new mongo();
+
+const algo = require('./algo');
+const line = require('./line');
 
 //Ratioは変更の可能性あり
 const profitRatio = 0.0005;
@@ -14,22 +18,6 @@ const lossRatio = -0.001;
 const orderSize = 0.01;
 const chkPriceCount = 5;
 const interval = 60000;
-
-// MongoDB設定
-const dbOptions = {
-  useUnifiedTopology : true,
-  useNewUrlParser : true
-};
-
-const mongo_user = process.env.MONGO_INITDB_ROOT_USERNAME;
-const mongo_pw = process.env.MONGO_INITDB_ROOT_PASSWORD;
-//todo:ダミー最終で消す
-// const mongo_user = 'eren';
-// const mongo_pw = 'yeager';
-const dbUrl = `mongodb://${mongo_user}:${mongo_pw}@mongo:27017`;
-
-const dbName = 'autocoin';
-const cName = 'btcfx';
 
 //lineNotifyの設定
 const alertUnit = 10;
@@ -65,19 +53,6 @@ const sleep = (timer) => {
       resolve()
     }, timer)
   })
-};
-
-//MongoDB Create
-const insertDocuments = (db, object) => {
-  //collection取得
-  const collection = db.collection(cName);
-  //collectionにdocument追加
-  collection.insertOne(object,
-      (err, result) => {
-        //成功を出力
-        console.log('DBに書き込み');
-      }
-  );
 };
 
 //LineNotifyへPOST
@@ -273,24 +248,8 @@ const LineNotify = (message) => {
           collateral: collateral.collateral
         };
       }
-      //MongoDB inserted
-      let client;
 
-      try {
-        client = await MongoClient.connect(
-            dbUrl,
-            dbOptions,
-        );
-        const db = client.db(dbName);
-
-        // CRUD関数 awaitで待機させる
-        await insertDocuments(db, tradeLog);
-      } catch (err) {
-        // 接続失敗した場合
-        console.log(err.stack);
-      }
-
-      client.close();
+      mongodb.insert(tradeLog);
 
       console.log('');
       console.log('tradeLog:',tradeLog);

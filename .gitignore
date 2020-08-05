@@ -103,3 +103,4 @@ autocoin/config.js
 /stopAWS.sh
 /junit.xml
 container_data
+/autocoin/sample/
