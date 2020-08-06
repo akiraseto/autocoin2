@@ -12,7 +12,8 @@ const mongo = new Mongo();
 const Line = require('./line');
 const line = new Line(config.line_token)
 
-const algo_class = require('./algo');
+const Algo = require('./algo');
+const utils = require('./utils');
 
 //Ratioは変更の可能性あり
 const profitRatio = 0.0005;
@@ -31,16 +32,7 @@ const longMA = 30;
 
 const beforeHour = longMA * 60;
 const timeStamp = moment().unix() - beforeHour;
-const crypto = new Crypto(periods, timeStamp)
-
-//タイマー
-const sleep = (timer) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(()=>{
-      resolve()
-    }, timer)
-  })
-};
+const crypto = new Crypto(periods, timeStamp);
 
 (async function () {
   let sumProfit = 0;
@@ -77,7 +69,7 @@ const sleep = (timer) => {
     if (health.state !== 'RUNNING') {
       // 以上ならwhileの先頭に
       console.log('取引所の稼働状況:', health);
-      await sleep(interval);
+      await utils.sleep(interval);
       continue;
     }
 
@@ -119,7 +111,7 @@ const sleep = (timer) => {
 
       //  whileの先頭に
       console.log(' ');
-      await sleep(interval);
+      await utils.sleep(interval);
       continue;
     }
 
@@ -249,7 +241,7 @@ const sleep = (timer) => {
       baseProfit = sumProfit;
     }
 
-    await sleep(interval);
+    await utils.sleep(interval);
   }
 
 }) ();
