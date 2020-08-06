@@ -9,7 +9,6 @@ module.exports = class Mongo {
     // const mongo_user = 'eren';
     // const mongo_pw = 'yeager';
 
-
     this.dbUrl = `mongodb://${mongo_user}:${mongo_pw}@mongo:27017`;
     this.dbName = 'autocoin';
     this.cName = 'btcfx';
@@ -19,8 +18,8 @@ module.exports = class Mongo {
     };
   }
 
-  async insert(object) {
-    await MongoClient.connect(this.dbUrl, this.dbOptions, (err, client) => {
+  insert(object) {
+    MongoClient.connect(this.dbUrl, this.dbOptions, (err, client) => {
       if (err) {
         console.log(err);
       } else {

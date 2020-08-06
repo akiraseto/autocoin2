@@ -6,12 +6,13 @@ const gauss = require('gauss');
 const ccxt = require ('ccxt');
 const bitflyer = new ccxt.bitflyer (config);
 
-const mongo_class = require('./mongo');
-const mongo = new mongo_class();
-const line_class = require('./line');
-const line = new line_class()
+const Crypto = require('./crypto')
+const Mongo = require('./mongo');
+const mongo = new Mongo();
+const Line = require('./line');
+const line = new Line(config.line_token)
 
-const algo = require('./algo');
+const algo_class = require('./algo');
 
 //Ratioは変更の可能性あり
 const profitRatio = 0.0005;
@@ -22,11 +23,7 @@ const interval = 60000;
 
 //lineNotifyの設定
 const alertUnit = 10;
-
-//cryptowatchの設定
-const markets = 'bitflyer';
-const instrument = 'btcfxjpy';
-//取引間隔
+//cryptowatchの取得間隔
 const periods = 60;
 //移動平均間隔(分)
 const shortMA = 5;
@@ -34,16 +31,7 @@ const longMA = 30;
 
 const beforeHour = longMA * 60;
 const timeStamp = moment().unix() - beforeHour;
-const uri = `https://api.cryptowat.ch/markets/${markets}/${instrument}/ohlc?periods=${periods}&after=${timeStamp}`;
-
-//起動時cryptowatchから値取得
-const getCryptowatch = () => {
-  return new Promise((resolve) => {
-    request(uri,(err, response, body) => {
-      resolve(JSON.parse(body))
-    });
-  })
-};
+const crypto = new Crypto(periods, timeStamp)
 
 //タイマー
 const sleep = (timer) => {
@@ -59,7 +47,8 @@ const sleep = (timer) => {
   let baseProfit = null;
   let orderInfo = null;
   let tradeLog = null;
-  const json = await getCryptowatch();
+  const json = await crypto.getOhlc();
+
   let list = json.result[periods];
   let closePrice = list.map(entry => entry[4]);
   let records = closePrice.splice(closePrice.length - longMA, closePrice.length);

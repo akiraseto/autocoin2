@@ -1,11 +1,10 @@
 const request = require('request');
-const config = require('./config');
 
 module.exports = class Line {
 
-  constructor() {
+  constructor(line_token) {
     this.linUri = 'https://notify-api.line.me/api/notify';
-    this.lineToken = config.line_token;
+    this.lineToken = line_token;
   }
 
   notify(message) {
