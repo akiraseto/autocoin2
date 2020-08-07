@@ -11,9 +11,9 @@ const Mongo = require('./mongo');
 const mongo = new Mongo();
 const Line = require('./line');
 const line = new Line(config.line_token)
+const utils = require('./utils');
 
 const Algo = require('./algo');
-const utils = require('./utils');
 
 //Ratioは変更の可能性あり
 const profitRatio = 0.0005;
@@ -67,30 +67,10 @@ const crypto = new Crypto(periods, timeStamp);
     //取引所の稼働状況を確認
     let health = await bitflyer.fetch2('getboardstate');
     if (health.state !== 'RUNNING') {
-      // 以上ならwhileの先頭に
+      // 異常ならwhileの先頭に
       console.log('取引所の稼働状況:', health);
       await utils.sleep(interval);
       continue;
-    }
-
-    const ticker = await bitflyer.fetchTicker ('FX_BTC_JPY');
-    records.push(ticker.ask);
-    if (records.length > longMA){
-      records.shift()
-    }
-
-    const prices = new gauss.Vector(records);
-    const shortValue = prices.ema(shortMA).pop();
-    const longValue = prices.ema(longMA).pop();
-
-    let countHigh = 0;
-    for (let i=chkPriceCount; i>0; i--) {
-      const before = records[records.length -i -1];
-      const after = records[records.length -i];
-
-      if (before <= after){
-        countHigh += 1;
-      }
     }
 
     //スワップポイント対応 23:55-0:05
@@ -108,12 +88,35 @@ const crypto = new Crypto(periods, timeStamp);
         flag = 'sell';
         label = 'スワップ対応で成行売り';
       }
-
       //  whileの先頭に
       console.log(' ');
       await utils.sleep(interval);
       continue;
     }
+
+
+    //現在価格を取得
+    const ticker = await bitflyer.fetchTicker ('FX_BTC_JPY');
+    records.push(ticker.ask);
+    if (records.length > longMA){
+      records.shift()
+    }
+
+    //todo:移動平均作成
+    const prices = new gauss.Vector(records);
+    const shortValue = prices.ema(shortMA).pop();
+    const longValue = prices.ema(longMA).pop();
+
+    let countHigh = 0;
+    for (let i=chkPriceCount; i>0; i--) {
+      const before = records[records.length -i -1];
+      const after = records[records.length -i];
+
+      if (before <= after){
+        countHigh += 1;
+      }
+    }
+
 
     if (orderInfo) {
       priceDiff = ticker.bid - orderInfo.price;

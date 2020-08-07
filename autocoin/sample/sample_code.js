@@ -24,7 +24,11 @@ const bitflyer = new ccxt.bitflyer (config);
   // console.log (bitflyer.id, await bitflyer.fetchTicker ('FX_BTC_JPY'));
 
   //状態確認
-  console.log (bitflyer.id, await bitflyer.fetch2('getboardstate'));
+  // console.log (bitflyer.id, await bitflyer.fetch2('getboardstate'));
+
+  //建玉の一覧を取得
+  console.log (bitflyer.id, await bitflyer.fetch2('getpositions','private', 'GET', {product_code: "FX_BTC_JPY"}));
+
 
 
   //銀行口座
