@@ -1,6 +1,5 @@
 'use strict';
 const config = require('./config');
-const request = require('request');
 const moment = require('moment');
 const gauss = require('gauss');
 const ccxt = require ('ccxt');
@@ -12,7 +11,6 @@ const mongo = new Mongo();
 const Line = require('./line');
 const line = new Line(config.line_token)
 const utils = require('./utils');
-
 const Algo = require('./algo');
 
 //Ratioは変更の可能性あり
@@ -20,13 +18,11 @@ const profitRatio = 0.0005;
 const lossRatio = -0.001;
 const orderSize = 0.01;
 const chkPriceCount = 5;
-const interval = 60000;
-
-//lineNotifyの設定
-const alertUnit = 10;
-//cryptowatchの取得間隔
+//取引間隔(秒)
 const periods = 60;
-//移動平均間隔(分)
+//お知らせする価格差閾値
+const infoThreshold = 10;
+//移動平均幅
 const shortMA = 5;
 const longMA = 30;
 
@@ -39,11 +35,9 @@ const crypto = new Crypto(periods, timeStamp);
   let baseProfit = null;
   let orderInfo = null;
   let tradeLog = null;
-  const json = await crypto.getOhlc();
+  let records = await crypto.dumpRecords(longMA);
 
-  let list = json.result[periods];
-  let closePrice = list.map(entry => entry[4]);
-  let records = closePrice.splice(closePrice.length - longMA, closePrice.length);
+  const algo = new Algo(records, shortMA, longMA, chkPriceCount);
 
   //Lineに自動売買スタートを通知
   const nowTime = moment();
@@ -51,6 +45,7 @@ const crypto = new Crypto(periods, timeStamp);
   const collateral = await bitflyer.fetch2('getcollateral', 'private', 'GET');
   const message = `\n 自動売買スタート\n date: ${strTime}\n collateral: ${collateral.collateral}`;
   line.notify(message);
+
 
   while (true) {
     console.log('================');
@@ -69,7 +64,7 @@ const crypto = new Crypto(periods, timeStamp);
     if (health.state !== 'RUNNING') {
       // 異常ならwhileの先頭に
       console.log('取引所の稼働状況:', health);
-      await utils.sleep(interval);
+      await utils.sleep(periods * 1000);
       continue;
     }
 
@@ -90,33 +85,19 @@ const crypto = new Crypto(periods, timeStamp);
       }
       //  whileの先頭に
       console.log(' ');
-      await utils.sleep(interval);
+      await utils.sleep(periods * 1000);
       continue;
     }
 
 
     //現在価格を取得
-    const ticker = await bitflyer.fetchTicker ('FX_BTC_JPY');
-    records.push(ticker.ask);
-    if (records.length > longMA){
-      records.shift()
-    }
+    const ticker = await bitflyer.fetchTicker('FX_BTC_JPY');
 
-    //todo:移動平均作成
-    const prices = new gauss.Vector(records);
-    const shortValue = prices.ema(shortMA).pop();
-    const longValue = prices.ema(longMA).pop();
+    //レコードを更新
+    algo.records.push(ticker.ask);
+    algo.records.shift()
 
-    let countHigh = 0;
-    for (let i=chkPriceCount; i>0; i--) {
-      const before = records[records.length -i -1];
-      const after = records[records.length -i];
-
-      if (before <= after){
-        countHigh += 1;
-      }
-    }
-
+    const resBullAlgo = algo.bullAlgo()
 
     if (orderInfo) {
       priceDiff = ticker.bid - orderInfo.price;
@@ -129,7 +110,7 @@ const crypto = new Crypto(periods, timeStamp);
       console.log('profit:', profit);
 
       //売り注文:陰線が多い or デッドクロスなら即売る
-      if (countHigh <= 1 || shortValue < longValue) {
+      if (resBullAlgo === 'sell' || algo.shortValue < algo.longValue) {
         order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
         sumProfit += profit;
         orderInfo = null;
@@ -159,7 +140,7 @@ const crypto = new Crypto(periods, timeStamp);
       買い注文判断
        ローソク足が陽線が多く、かつゴールデンクロス
       */
-      if (countHigh >= 3 && shortValue > longValue) {
+      if (resBullAlgo === 'buy' && algo.shortValue > algo.longValue) {
         order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', orderSize);
         orderInfo = {
           order: order,
@@ -175,7 +156,7 @@ const crypto = new Crypto(periods, timeStamp);
     console.log('sum profit:', sumProfit);
     console.log('collateral:',collateral.collateral );
 
-    //売買したならmongoに記録する
+    //取引した場合、DBに記録
     if (flag === 'buy' || flag === 'sell'){
 
       if(flag === 'buy') {
@@ -185,10 +166,10 @@ const crypto = new Crypto(periods, timeStamp);
           created_at: nowTime._d,
           strTime: strTime,
           price: orderInfo.price,
-          shortMA: shortValue,
-          longMA: longValue,
-          countHigh: countHigh,
-          records: records
+          shortMA: algo.shortValue,
+          longMA: algo.longValue,
+          countHigh: algo.countHigh,
+          records: algo.records
         };
       }else if(flag === 'sell'){
         tradeLog = {
@@ -197,10 +178,10 @@ const crypto = new Crypto(periods, timeStamp);
           created_at: nowTime._d,
           strTime: strTime,
           price: ticker.bid,
-          shortMA: shortValue,
-          longMA: longValue,
-          countHigh: countHigh,
-          records: records,
+          shortMA: algo.shortValue,
+          longMA: algo.longValue,
+          countHigh: algo.countHigh,
+          records: algo.records,
           profitRatio: profitRatio,
           lossRatio: lossRatio,
           diff: priceDiff,
@@ -219,21 +200,21 @@ const crypto = new Crypto(periods, timeStamp);
       tradeLog = null;
 
     } else {
-    //  売買じゃないときに表示
-      console.log('records:', records);
-      console.log('shortMA:',shortValue);
-      console.log('longMA :',longValue);
-      console.log('countHigh:', countHigh);
+      //  取引して【ない】場合、表示する
+      console.log('records:', algo.records);
+      console.log('shortMA:', algo.shortValue);
+      console.log('longMA :', algo.longValue);
+      console.log('countHigh:', algo.countHigh);
     }
 
-    // LineNotifyに通知(設定閾値を超えたら)
+    // Line通知(閾値を超えたら)
     if (baseProfit !== null){
       if (flag === 'sell') {
         //sell済みなのでsumProfitと被るprofitを初期化
         profit = 0;
       }
       const diff = Math.abs(sumProfit - baseProfit + profit);
-      if(diff >= alertUnit) {
+      if (diff >= infoThreshold) {
         const message = `\n date: ${strTime}\n sumProfit: ${sumProfit}\n profit: ${profit}\n collateral: ${collateral.collateral}`;
 
         line.notify(message);
@@ -244,7 +225,7 @@ const crypto = new Crypto(periods, timeStamp);
       baseProfit = sumProfit;
     }
 
-    await utils.sleep(interval);
+    await utils.sleep(periods * 1000);
   }
 
 }) ();

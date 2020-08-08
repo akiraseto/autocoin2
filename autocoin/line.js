@@ -8,6 +8,8 @@ module.exports = class Line {
   }
 
   notify(message) {
+    //LINEに通知
+
     return new Promise((resolve) => {
       let options = {
         uri: this.linUri,
