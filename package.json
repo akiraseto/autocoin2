@@ -2,7 +2,7 @@
   "name": "autocoin2",
   "version": "1.0.0",
   "description": "",
-  "main": "autocoin/autocoin.js",
+  "main": "autocoin/app.js",
   "scripts": {
     "test": "jest --ci --runInBand --reporters=default --reporters=jest-junit"
   },
@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "ccxt": "^1.18.1304",
-    "dotenv": "^8.2.0",
     "gauss": "^0.2.12",
     "moment": "^2.24.0",
     "mongodb": "^3.3.5"

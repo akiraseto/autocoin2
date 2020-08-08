@@ -1,6 +1,6 @@
 'use strict';
 const ccxt = require ('ccxt');
-const config = require('./config');
+const config = require('../config');
 const bitflyer = new ccxt.bitflyer (config);
 
 (async function () {
