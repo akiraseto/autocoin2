@@ -98,6 +98,7 @@ const crypto = new Crypto(periods, timeStamp);
     algo.records.shift()
 
     const resBullAlgo = algo.bullAlgo()
+    const resCrossAlgo = algo.crossAlgo()
 
     if (orderInfo) {
       priceDiff = ticker.bid - orderInfo.price;
@@ -110,7 +111,7 @@ const crypto = new Crypto(periods, timeStamp);
       console.log('profit:', profit);
 
       //売り注文:陰線が多い or デッドクロスなら即売る
-      if (resBullAlgo === 'sell' || algo.shortValue < algo.longValue) {
+      if (resBullAlgo === 'sell' || resCrossAlgo === 'sell') {
         order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
         sumProfit += profit;
         orderInfo = null;
@@ -140,7 +141,7 @@ const crypto = new Crypto(periods, timeStamp);
       買い注文判断
        ローソク足が陽線が多く、かつゴールデンクロス
       */
-      if (resBullAlgo === 'buy' && algo.shortValue > algo.longValue) {
+      if (resBullAlgo === 'buy' && resCrossAlgo === 'buy') {
         order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', orderSize);
         orderInfo = {
           order: order,
@@ -168,7 +169,7 @@ const crypto = new Crypto(periods, timeStamp);
           price: orderInfo.price,
           shortMA: algo.shortValue,
           longMA: algo.longValue,
-          countHigh: algo.countHigh,
+          bullRatio: algo.bullRatio,
           records: algo.records
         };
       }else if(flag === 'sell'){
@@ -180,7 +181,7 @@ const crypto = new Crypto(periods, timeStamp);
           price: ticker.bid,
           shortMA: algo.shortValue,
           longMA: algo.longValue,
-          countHigh: algo.countHigh,
+          bullRatio: algo.bullRatio,
           records: algo.records,
           profitRatio: profitRatio,
           lossRatio: lossRatio,
@@ -201,10 +202,10 @@ const crypto = new Crypto(periods, timeStamp);
 
     } else {
       //  取引して【ない】場合、表示する
-      console.log('records:', algo.records);
       console.log('shortMA:', algo.shortValue);
       console.log('longMA :', algo.longValue);
-      console.log('countHigh:', algo.countHigh);
+      console.log('bullRatio:', algo.bullRatio);
+      console.log('records:', algo.records);
     }
 
     // Line通知(閾値を超えたら)

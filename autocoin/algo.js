@@ -14,6 +14,7 @@ module.exports = class Algo {
 
     //陽線カウントの範囲
     this.chkPriceCount = chkPriceCount
+    this.bullRatio = null;
 
   }
 
@@ -36,26 +37,38 @@ module.exports = class Algo {
 
   bullAlgo(buy_ratio = 0.6, sell_ratio = 0.2) {
     //  陽線の割合で売買を判断する
-
     const countHigh = this.chkHigh()
-
     let res = null;
+    this.bullRatio = countHigh / this.chkPriceCount;
 
-    const bull_ratio = countHigh / this.chkPriceCount;
-
-    if (bull_ratio >= buy_ratio) {
+    if (this.bullRatio >= buy_ratio) {
       res = 'buy';
-    } else if (bull_ratio <= sell_ratio) {
+    } else if (this.bullRatio <= sell_ratio) {
       res = 'sell';
     }
     return res;
   }
 
 
-  //todo:ゴールデン・デッドクロス判断
+  crossAlgo() {
+    //ゴールデン・デッドクロスで売買を判断する
+    let res = null;
+    if (this.shortValue <= this.longValue) {
+      res = 'sell';
+    } else if (this.shortValue > this.longValue) {
+      res = 'buy';
+    }
 
-//todo:重み付けで売買判断させる
-//  todo:正数がbuy判断、負数がsell判断
+
+  }
+
+  //todo:重み付けで売買判断させる
+  //todo:正数がbuy判断、負数がsell判断
+  tradeAlgo() {
+    //  総合的な売買判断
+
+
+  }
 
 
 }
