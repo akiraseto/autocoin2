@@ -1,7 +1,6 @@
 'use strict';
 const config = require('./config');
 const moment = require('moment');
-const gauss = require('gauss');
 const ccxt = require ('ccxt');
 const bitflyer = new ccxt.bitflyer (config);
 
@@ -25,6 +24,8 @@ const infoThreshold = 10;
 //移動平均幅
 const shortMA = 5;
 const longMA = 30;
+//使用する売買アルゴリズム
+const algoList = ['bull', 'cross']
 
 const beforeHour = longMA * 60;
 const timeStamp = moment().unix() - beforeHour;
@@ -97,8 +98,10 @@ const crypto = new Crypto(periods, timeStamp);
     algo.records.push(ticker.ask);
     algo.records.shift()
 
-    const resBullAlgo = algo.bullAlgo()
-    const resCrossAlgo = algo.crossAlgo()
+    //売買評価を行う
+    algo.bullAlgo()
+    algo.crossAlgo()
+    const totalEva = algo.tradeAlgo(algoList)
 
     if (orderInfo) {
       priceDiff = ticker.bid - orderInfo.price;
@@ -111,7 +114,7 @@ const crypto = new Crypto(periods, timeStamp);
       console.log('profit:', profit);
 
       //売り注文:陰線が多い or デッドクロスなら即売る
-      if (resBullAlgo === 'sell' || resCrossAlgo === 'sell') {
+      if (totalEva <= -1) {
         order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
         sumProfit += profit;
         orderInfo = null;
@@ -141,7 +144,7 @@ const crypto = new Crypto(periods, timeStamp);
       買い注文判断
        ローソク足が陽線が多く、かつゴールデンクロス
       */
-      if (resBullAlgo === 'buy' && resCrossAlgo === 'buy') {
+      if (totalEva >= 2) {
         order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', orderSize);
         orderInfo = {
           order: order,
