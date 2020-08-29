@@ -12,16 +12,11 @@ const line = new Line(config.line_token)
 const utils = require('./utils');
 const Algo = require('./algo');
 
-// const profitRatio = 0.0005;
-// const lossRatio = -0.001;
 const orderSize = 0.01;
-
 //取引間隔(秒)
-const periods = 60;
-
+const tradeInterval = 60;
 //swap日数
 const swapDays = 3;
-
 //通知用の価格差閾値
 const infoThreshold = 30;
 
@@ -56,12 +51,12 @@ const BBLossCut = {
 
 // アルゴリズムの重み付け:未使用は0にする
 const algoWeight = {
-  // 'bullAlgo': 0.1,
-  // 'crossAlgo': 0.2,
-  // 'bollingerAlgo': 0.7,
-  'bullAlgo': 0,
-  'crossAlgo': 0,
-  'bollingerAlgo': 1,
+  // 'bullAlgo': 0,
+  // 'crossAlgo': 0,
+  // 'bollingerAlgo': 1,
+  'bullAlgo': 0.1,
+  'crossAlgo': 0.2,
+  'bollingerAlgo': 0.7,
 };
 //売買判断の閾値
 const algoThreshold = 0.3;
@@ -70,7 +65,6 @@ const algoThreshold = 0.3;
 (async function () {
   let sumProfit = 0;
   let beforeProfit = null;
-// let orderInfo = null;
   const nowTime = moment();
   const collateral = await bitflyer.fetch2('getcollateral', 'private', 'GET');
 
@@ -78,7 +72,7 @@ const algoThreshold = 0.3;
   const crypto = new Crypto();
   const beforeHour = crossParam.longMA * 60;
   const timeStamp = nowTime.unix() - beforeHour;
-  let records = await crypto.getOhlc(periods, timeStamp);
+  let records = await crypto.getOhlc(tradeInterval, timeStamp);
 
   const algo = new Algo(records);
 
@@ -89,16 +83,9 @@ const algoThreshold = 0.3;
 
 
   while (true) {
-    // let order = null;
     let flag = null;
     let label = "";
     let tradeLog = null;
-    // let priceDiff = null;
-    // let ratio = null;
-    // let profit = 0;
-
-    let bbRes = null;
-    let totalEva = 0;
 
     const nowTime = moment();
     const strTime = nowTime.format('YYYY/MM/DD HH:mm:ss');
@@ -108,10 +95,9 @@ const algoThreshold = 0.3;
     if (health.state !== 'RUNNING') {
       // 異常ならwhileの先頭に
       console.log('取引所の稼働状況:', health);
-      await utils.sleep(periods * 1000);
+      await utils.sleep(tradeInterval * 1000);
       continue;
     }
-
 
     //現在価格を取得
     const ticker = await bitflyer.fetchTicker('FX_BTC_JPY');
@@ -121,7 +107,9 @@ const algoThreshold = 0.3;
     algo.records.push(nowPrice);
     algo.records.shift()
 
-    //2回目以降用に評価Pを初期化
+    //アルゴリズム用Paramを初期化
+    let bbRes = null;
+    let totalEva = 0;
     algo.initEva();
     //共通アルゴリズム
     const crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA);
@@ -168,7 +156,6 @@ const algoThreshold = 0.3;
           bbRes = algo.bollingerAlgo(BBProfit.period, BBProfit.sigma);
           totalEva = algo.tradeAlgo(algoWeight)
 
-
           //買い建玉で、下降シグナルが出ている
           if (openI.side === 'BUY' && totalEva < -algoThreshold) {
             await bitflyer.createMarketSellOrder('FX_BTC_JPY', openI.size);
@@ -205,7 +192,6 @@ const algoThreshold = 0.3;
             await bitflyer.createMarketBuyOrder('FX_BTC_JPY', openI.size);
             sumProfit += openI.pnl;
             flag = 'BUY';
-
           }
         }
       }
@@ -260,7 +246,7 @@ const algoThreshold = 0.3;
         console.log('スワップポイント対応中_23:30-0:00');
 
         //注文を受け付けない while先頭に移動
-        await utils.sleep(periods * 1000 * 60);
+        await utils.sleep(tradeInterval * 1000);
         continue;
       }
 
@@ -268,13 +254,11 @@ const algoThreshold = 0.3;
       bbRes = algo.bollingerAlgo(BBOrder.period, BBOrder.sigma);
       totalEva = algo.tradeAlgo(algoWeight)
 
-      // if (nowPrice <= res.lower) {
       if (totalEva > algoThreshold) {
         //【買い】で建玉する
         await bitflyer.createMarketBuyOrder('FX_BTC_JPY', orderSize);
         flag = 'BUY';
 
-        // } else if (nowPrice >= res.upper) {
       } else if (totalEva < -algoThreshold) {
         //【売り】で建玉する
         await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
@@ -302,137 +286,13 @@ const algoThreshold = 0.3;
         console.log('');
         console.log(label);
         console.log(tradeLog);
-
       }
     }
+
 
     console.log('');
     console.log('★sumProfit: ', sumProfit);
     console.log('');
-
-
-    // if (orderInfo) {
-    //     priceDiff = nowPrice - orderInfo.price;
-    //     ratio = nowPrice / orderInfo.price - 1;
-    //     profit = Math.round((nowPrice - orderInfo.price) * orderSize * 10) / 10;
-    //     console.log('latest price:', nowPrice);
-    //     console.log('order price: ', orderInfo.price);
-    //     console.log('diff: ', priceDiff);
-    //     console.log('ratio: ', ratio);
-    //     console.log('profit:', profit);
-    //
-    //     //売り注文:陰線が多い or デッドクロスなら即売る
-    //     if (totalEva <= -1) {
-    //       order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
-    //       sumProfit += profit;
-    //       orderInfo = null;
-    //       flag = 'sell';
-    //       label = '下落兆候が強いため売り';
-    //
-    //     } else {
-    //       //  利確、ロスカット
-    //       if (nowPrice - orderInfo.price > orderInfo.price * profitRatio) {
-    //         order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
-    //         sumProfit += profit;
-    //         orderInfo = null;
-    //         flag = 'sell';
-    //         label = '利確';
-    //
-    //       } else if (nowPrice - orderInfo.price < orderInfo.price * lossRatio) {
-    //         order = await bitflyer.createMarketSellOrder ('FX_BTC_JPY', orderSize);
-    //         sumProfit += profit;
-    //         orderInfo = null;
-    //         flag = 'sell';
-    //         label = 'ロスカット';
-    //       }
-    //     }
-    //
-    //   } else {
-    //     /*
-    //     買い注文判断
-    //      ローソク足が陽線が多く、かつゴールデンクロス
-    //     */
-    //     if (totalEva >= 2) {
-    //       order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', orderSize);
-    //       orderInfo = {
-    //         order: order,
-    //         price: ticker.ask
-    //       };
-    //       flag = 'buy';
-    //       label = '買い注文';
-    //     }
-    //   }
-    //
-    //   const collateral = await bitflyer.fetch2('getcollateral','private', 'GET');
-    //   sumProfit = Math.round(sumProfit * 10) / 10;
-    //   console.log('sum profit:', sumProfit);
-    //   console.log('collateral:',collateral.collateral );
-    //
-    //   //取引した場合、DBに記録
-    //   if (flag === 'buy' || flag === 'sell'){
-    //
-    //     tradeLog = {
-    //       flag: flag,
-    //       label: label,
-    //       created_at: nowTime._d,
-    //       strTime: strTime,
-    //       price: orderInfo.price,
-    //       shortMA: crossRes.shortValue,
-    //       longMA: crossRes.longValue,
-    //       bullRatio: bullRatio,
-    //       records: algo.records
-    //     };
-    //
-    //     if(flag === 'sell'){
-    //
-    //       //項目追加
-    //       tradeLog = Object.assign(tradeLog, {
-    //         price: nowPrice,
-    //         profitRatio: profitRatio,
-    //         lossRatio: lossRatio,
-    //         diff: priceDiff,
-    //         ratio: ratio,
-    //         profit: profit,
-    //         sumProfit: sumProfit,
-    //         collateral: collateral.collateral
-    //       });
-    //
-    //     }
-    //
-    //     mongo.insert(tradeLog);
-    //
-    //     console.log('');
-    //     console.log('tradeLog:',tradeLog);
-    //     console.log('order:',order);
-    //     tradeLog = null;
-    //
-    //   } else {
-    //     //  取引して【ない】場合、表示する
-    //     console.log('shortMA:', crossRes.shortValue);
-    //     console.log('longMA :', crossRes.longValue);
-    //     console.log('bullRatio:', bullRatio);
-    //     console.log('records:', algo.records);
-    //   }
-    //
-    //   // Line通知(閾値を超えたら)
-    //   if (baseProfit !== null){
-    //     if (flag === 'sell') {
-    //       //sell済みなのでsumProfitと被るprofitを初期化
-    //       profit = 0;
-    //     }
-    //     const diff = Math.abs(sumProfit - baseProfit + profit);
-    //     if (diff >= infoThreshold) {
-    //       const message = `\n date: ${strTime}\n sumProfit: ${sumProfit}\n profit: ${profit}\n collateral: ${collateral.collateral}`;
-    //
-    //       line.notify(message);
-    //       baseProfit = sumProfit;
-    //     }
-    //   }else{
-    //     //アラート初期化
-    //     baseProfit = sumProfit;
-    //   }
-
-    await utils.sleep(periods * 1000);
+    await utils.sleep(tradeInterval * 1000);
   }
-
 }) ();
