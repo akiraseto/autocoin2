@@ -52,15 +52,20 @@ const BBLossCut = {
   //損切り
   //recordはdayで入力
   'period': 10,
-  'sigma': 3.5
+  'sigma': 3
 };
 
 // アルゴリズムの重み付け:未使用は0にする
 const algoWeight = {
-  'bullAlgo': 1,
-  'crossAlgo': 1,
-  'bollingerAlgo': 1
+  // 'bullAlgo': 0.1,
+  // 'crossAlgo': 0.2,
+  // 'bollingerAlgo': 0.7,
+  'bullAlgo': 0,
+  'crossAlgo': 0,
+  'bollingerAlgo': 1,
 };
+//売買判断の閾値
+const algoThreshold = 0.3;
 
 
 (async function () {
@@ -85,13 +90,17 @@ const algoWeight = {
 
 
   while (true) {
-    let order = null;
+    // let order = null;
     let flag = null;
     let label = "";
     let tradeLog = null;
     // let priceDiff = null;
     // let ratio = null;
     // let profit = 0;
+
+    let bbRes = null;
+    let totalEva = 0;
+
     const nowTime = moment();
     const strTime = nowTime.format('YYYY/MM/DD HH:mm:ss');
 
@@ -113,9 +122,11 @@ const algoWeight = {
     algo.records.push(nowPrice);
     algo.records.shift()
 
-    //売買評価を行う
+    //2回目以降用に評価Pを初期化
+    algo.initEva();
+    //共通アルゴリズム
+    const crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA);
     const bullRatio = algo.bullAlgo(bullParam.chkPriceCount, bullParam.buy_ratio, bullParam.sell_ratio)
-    const crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA)
 
     //建玉を調べる
     const jsonOpenI = await bitflyer.fetch2('getpositions', 'private', 'GET', {product_code: "FX_BTC_JPY"});
@@ -141,11 +152,11 @@ const algoWeight = {
         label = 'swap日数を超えているため建玉をリセット'
 
         if (openI.side === 'BUY') {
-          order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', openI.size);
+          await bitflyer.createMarketSellOrder('FX_BTC_JPY', openI.size);
           flag = 'SELL';
 
         } else {
-          order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', openI.size);
+          await bitflyer.createMarketBuyOrder('FX_BTC_JPY', openI.size);
           flag = 'BUY';
         }
         sumProfit += openI.pnl;
@@ -155,40 +166,44 @@ const algoWeight = {
         //  利益が出ている場合
         if (openI.pnl >= 0) {
           label = '利確'
-          const res = algo.bollingerAlgo(BBProfit.period, BBProfit.sigma);
+          bbRes = algo.bollingerAlgo(BBProfit.period, BBProfit.sigma);
+          totalEva = algo.tradeAlgo(algoWeight)
 
-          //買い建玉で、現価格がBBアッパーを超えている
-          if (openI.side === 'BUY' && nowPrice >= res.upper) {
-            order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', openI.size);
+
+          //買い建玉で、下降シグナルが出ている
+          if (openI.side === 'BUY' && totalEva < -algoThreshold) {
+            await bitflyer.createMarketSellOrder('FX_BTC_JPY', openI.size);
             sumProfit += openI.pnl;
             flag = 'SELL';
 
-            //売り建玉で、現価格がBBロワーを下回っている
-          } else if (openI.side === 'SELL' && nowPrice <= res.lower) {
-            order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', openI.size);
+            //売り建玉で、上昇シグナルが出ている
+          } else if (openI.side === 'SELL' && totalEva > algoThreshold) {
+            await bitflyer.createMarketBuyOrder('FX_BTC_JPY', openI.size);
             sumProfit += openI.pnl;
             flag = 'BUY';
 
           }
         } else {
           //  損してる場合
+          //ロスカットはボリンジャーバンドのみで判断
+          //他のアルゴリズムは短いスパンで一過性判断のため除外
           label = 'ロスカット';
 
           //日にちベースのボリンジャー作成
           const dayPeriods = 60 * 60 * 24;
           const lossTimeStamp = nowTime.unix() - dayPeriods * BBLossCut.period;
           let dayRecords = await crypto.getOhlc(dayPeriods, lossTimeStamp);
-          const res = algo.bollingerAlgo(BBLossCut.period, BBLossCut.sigma, dayRecords);
+          bbRes = algo.bollingerAlgo(BBLossCut.period, BBLossCut.sigma, dayRecords);
 
-          //損しているのにローワーバンドを下回っている(更に下がる兆候がある)
-          if (openI.side === 'BUY' && nowPrice <= res.lower) {
-            order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', openI.size);
+          //損してるのにデイリーローワーバンドを下回っている(大きなトレンドが下がり兆候)
+          if (openI.side === 'BUY' && nowPrice <= bbRes.lower) {
+            await bitflyer.createMarketSellOrder('FX_BTC_JPY', openI.size);
             sumProfit += openI.pnl;
             flag = 'SELL';
 
-            //損しているのにアッパーバンドを超えている(更に上がる兆候がある)
-          } else if (openI.side === 'SELL' && nowPrice >= res.upper) {
-            order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', openI.size);
+            //損してるのにデイリーアッパーバンドを超えている(大きなトレンドで上がり兆候)
+          } else if (openI.side === 'SELL' && nowPrice >= bbRes.upper) {
+            await bitflyer.createMarketBuyOrder('FX_BTC_JPY', openI.size);
             sumProfit += openI.pnl;
             flag = 'BUY';
 
@@ -208,6 +223,9 @@ const algoWeight = {
           strTime: strTime,
           created_at: nowTime._d,
           openI: openI,
+          bollinger: bbRes,
+          cross: crossRes,
+          totalEva: totalEva,
         };
         mongo.insert(tradeLog);
 
@@ -247,15 +265,19 @@ const algoWeight = {
       }
 
       // 注文する ボリンジャーを使用
-      const res = algo.bollingerAlgo(BBOrder.period, BBOrder.sigma);
-      if (nowPrice <= res.lower) {
+      bbRes = algo.bollingerAlgo(BBOrder.period, BBOrder.sigma);
+      totalEva = algo.tradeAlgo(algoWeight)
+
+      // if (nowPrice <= res.lower) {
+      if (totalEva > algoThreshold) {
         //【買い】で建玉する
-        order = await bitflyer.createMarketBuyOrder('FX_BTC_JPY', orderSize);
+        await bitflyer.createMarketBuyOrder('FX_BTC_JPY', orderSize);
         flag = 'BUY';
 
-      } else if (nowPrice >= res.upper) {
+        // } else if (nowPrice >= res.upper) {
+      } else if (totalEva < -algoThreshold) {
         //【売り】で建玉する
-        order = await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
+        await bitflyer.createMarketSellOrder('FX_BTC_JPY', orderSize);
         flag = 'SELL';
       }
 
@@ -268,6 +290,9 @@ const algoWeight = {
           label: label,
           sumProfit: sumProfit,
           nowPrice: nowPrice,
+          bollinger: bbRes,
+          cross: crossRes,
+          totalEva: totalEva,
           strTime: strTime,
           created_at: nowTime._d,
         };

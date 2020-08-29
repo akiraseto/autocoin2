@@ -1,12 +1,12 @@
 const gauss = require('gauss');
 
-
 module.exports = class Algo {
 
   constructor(records) {
     this.records = records;
 
     // 各アルゴリズムの評価ポイント
+    //上昇シグナル:+  下降シグナル:-
     this.eva = {
       'bullAlgo': 0,
       'crossAlgo': 0,
@@ -60,21 +60,6 @@ module.exports = class Algo {
   }
 
 
-  bollinger(period, sigma, list = this.records) {
-    //  ボリンジャーバンド
-
-    const prices = new gauss.Vector(list.slice(-period));
-    //今回はSMAを使う
-    const sma = prices.sma(period).pop();
-    const stdev = prices.stdev()
-
-    const upper = Math.round(sma + stdev * sigma);
-    const lower = Math.round(sma - stdev * sigma);
-
-    return {'upper': upper, 'lower': lower}
-  }
-
-
   bollingerAlgo(period, sigma, list = this.records) {
     //  ボリンジャーバンド
 
@@ -88,9 +73,9 @@ module.exports = class Algo {
 
     //評価ポイント入れる
     const nowPrice = list.pop();
-    if (nowPrice >= upper) {
+    if (nowPrice <= lower) {
       this.eva['bollingerAlgo'] = 1;
-    } else if (nowPrice <= lower) {
+    } else if (nowPrice >= upper) {
       this.eva['bollingerAlgo'] = -1;
     }
 
@@ -108,6 +93,13 @@ module.exports = class Algo {
     }
 
     return totalEva
+  }
+
+
+  initEva() {
+    Object.keys(this.eva).forEach(key => {
+      this.eva[key] = 0;
+    });
   }
 
 
