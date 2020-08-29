@@ -23,4 +23,4 @@ services:
     volumes:
       - ./container_data/db:/data/db
 
-#todo:  mongoの日時を日本時間に対応する
+#todo:  dockerの日時を日本時間に対応する
