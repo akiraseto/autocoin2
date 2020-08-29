@@ -14,13 +14,12 @@ module.exports = class Algo {
     };
   }
 
-
-  bullAlgo(chkPriceCount, buy_ratio, sell_ratio, list = this.records) {
+  bullAlgo(range, ratio, list = this.records) {
     //  陽線の割合で売買を判断する
 
     let countHigh = 0
     //  任意期間の陽線回数をカウント
-    for (let i = chkPriceCount; i > 0; i--) {
+    for (let i = range; i > 0; i--) {
       const before = list[list.length - i - 1];
       const after = list[list.length - i];
 
@@ -30,16 +29,43 @@ module.exports = class Algo {
     }
 
     let bullRatio = 0;
-    bullRatio = countHigh / chkPriceCount;
+    bullRatio = countHigh / range;
     //正数がbuy判断、負数がsell判断
-    if (bullRatio >= buy_ratio) {
+    if (bullRatio >= ratio) {
       this.eva['bullAlgo'] = 1;
-    } else if (bullRatio <= sell_ratio) {
+    } else if (bullRatio <= 1 - ratio) {
       this.eva['bullAlgo'] = -1;
     }
 
     return bullRatio;
   }
+
+  //
+  // bullAlgo(range, buy_ratio, sell_ratio, list = this.records) {
+  //   //  陽線の割合で売買を判断する
+  //
+  //   let countHigh = 0
+  //   //  任意期間の陽線回数をカウント
+  //   for (let i = range; i > 0; i--) {
+  //     const before = list[list.length - i - 1];
+  //     const after = list[list.length - i];
+  //
+  //     if (before <= after) {
+  //       countHigh += 1;
+  //     }
+  //   }
+  //
+  //   let bullRatio = 0;
+  //   bullRatio = countHigh / range;
+  //   //正数がbuy判断、負数がsell判断
+  //   if (bullRatio >= buy_ratio) {
+  //     this.eva['bullAlgo'] = 1;
+  //   } else if (bullRatio <= sell_ratio) {
+  //     this.eva['bullAlgo'] = -1;
+  //   }
+  //
+  //   return bullRatio;
+  // }
 
 
   crossAlgo(shortMA, longMA, list = this.records) {

@@ -27,9 +27,8 @@ const infoThreshold = 30;
 
 //bullAlgoの設定値;陽線カウント
 const bullParam = {
-  'chkPriceCount': 5,
-  'buy_ratio': 0.6,
-  'sell_ratio': 0.2
+  'range': 10,
+  'ratio': 0.7,
 };
 //crossAlgoの設定値:移動平均幅
 const crossParam = {
@@ -126,7 +125,7 @@ const algoThreshold = 0.3;
     algo.initEva();
     //共通アルゴリズム
     const crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA);
-    const bullRatio = algo.bullAlgo(bullParam.chkPriceCount, bullParam.buy_ratio, bullParam.sell_ratio)
+    const bullRes = algo.bullAlgo(bullParam.range, bullParam.ratio)
 
     //建玉を調べる
     const jsonOpenI = await bitflyer.fetch2('getpositions', 'private', 'GET', {product_code: "FX_BTC_JPY"});
@@ -225,6 +224,7 @@ const algoThreshold = 0.3;
           openI: openI,
           bollinger: bbRes,
           cross: crossRes,
+          bull: bullRes,
           totalEva: totalEva,
         };
         mongo.insert(tradeLog);
@@ -292,6 +292,7 @@ const algoThreshold = 0.3;
           nowPrice: nowPrice,
           bollinger: bbRes,
           cross: crossRes,
+          bull: bullRes,
           totalEva: totalEva,
           strTime: strTime,
           created_at: nowTime._d,
