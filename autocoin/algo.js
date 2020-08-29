@@ -3,83 +3,109 @@ const gauss = require('gauss');
 
 module.exports = class Algo {
 
-  constructor(records, shortMA, longMA, chkPriceCount) {
-
+  constructor(records) {
     this.records = records;
-
-    //移動平均作成
-    const prices = new gauss.Vector(this.records);
-    this.shortValue = prices.ema(shortMA).pop();
-    this.longValue = prices.ema(longMA).pop();
-
-    //各アルゴリズムの重み付け
-    this.algoWeight = {
-      'bullAlgo': 1,
-      'crossAlgo': 1
-    }
 
     // 各アルゴリズムの評価ポイント
     this.eva = {
       'bullAlgo': 0,
-      'crossAlgo': 0
+      'crossAlgo': 0,
+      'bollingerAlgo': 0
     };
-
-    //陽線カウントの範囲
-    this.chkPriceCount = chkPriceCount
-    this.bullRatio = null;
-
   }
 
 
-  chkHigh() {
+  bullAlgo(chkPriceCount, buy_ratio, sell_ratio, list = this.records) {
+    //  陽線の割合で売買を判断する
+
     let countHigh = 0
     //  任意期間の陽線回数をカウント
-    for (let i = this.chkPriceCount; i > 0; i--) {
-      const before = this.records[this.records.length - i - 1];
-      const after = this.records[this.records.length - i];
+    for (let i = chkPriceCount; i > 0; i--) {
+      const before = list[list.length - i - 1];
+      const after = list[list.length - i];
 
       if (before <= after) {
         countHigh += 1;
       }
     }
-    return countHigh;
-  }
 
-
-  bullAlgo(buy_ratio = 0.6, sell_ratio = 0.2) {
-    //  陽線の割合で売買を判断する
-    const countHigh = this.chkHigh()
+    let bullRatio = 0;
+    bullRatio = countHigh / chkPriceCount;
     //正数がbuy判断、負数がsell判断
-    this.bullRatio = countHigh / this.chkPriceCount;
-
-    if (this.bullRatio >= buy_ratio) {
+    if (bullRatio >= buy_ratio) {
       this.eva['bullAlgo'] = 1;
-    } else if (this.bullRatio <= sell_ratio) {
+    } else if (bullRatio <= sell_ratio) {
       this.eva['bullAlgo'] = -1;
     }
+
+    return bullRatio;
   }
 
 
-  crossAlgo() {
+  crossAlgo(shortMA, longMA, list = this.records) {
     //ゴールデン・デッドクロスで売買を判断する
-    if (this.shortValue >= this.longValue) {
+
+    //移動平均作成
+    const prices = new gauss.Vector(list);
+    const shortValue = prices.ema(shortMA).pop();
+    const longValue = prices.ema(longMA).pop();
+
+    if (shortValue >= longValue) {
       this.eva['crossAlgo'] = 1;
-    } else if (this.shortValue < this.longValue) {
+    } else if (shortValue < longValue) {
       this.eva['crossAlgo'] = -1;
     }
+
+    return {'shortValue': shortValue, 'longValue': longValue};
   }
 
-  tradeAlgo(algo) {
+
+  bollinger(period, sigma, list = this.records) {
+    //  ボリンジャーバンド
+
+    const prices = new gauss.Vector(list.slice(-period));
+    //今回はSMAを使う
+    const sma = prices.sma(period).pop();
+    const stdev = prices.stdev()
+
+    const upper = Math.round(sma + stdev * sigma);
+    const lower = Math.round(sma - stdev * sigma);
+
+    return {'upper': upper, 'lower': lower}
+  }
+
+
+  bollingerAlgo(period, sigma, list = this.records) {
+    //  ボリンジャーバンド
+
+    const prices = new gauss.Vector(list.slice(-period));
+    //今回はSMAを使う
+    const sma = prices.sma(period).pop();
+    const stdev = prices.stdev()
+
+    const upper = Math.round(sma + stdev * sigma);
+    const lower = Math.round(sma - stdev * sigma);
+
+    //評価ポイント入れる
+    const nowPrice = list.pop();
+    if (nowPrice >= upper) {
+      this.eva['bollingerAlgo'] = 1;
+    } else if (nowPrice <= lower) {
+      this.eva['bollingerAlgo'] = -1;
+    }
+
+    return {'upper': upper, 'lower': lower}
+  }
+
+
+  tradeAlgo(weight) {
     //  重み付けして総合的な売買判断
 
     let totalEva = 0
-
-    algo.forEach((value) => {
-      let name = value + 'Algo';
-      totalEva += this.eva[name] * this.algoWeight[name]
-      //評価値を初期化
-      this.eva[name] = 0;
-    })
+    //評価ポイントにそれぞれの重みを掛けて足し合わせる
+    for (const [key, value] of Object.entries(this.eva)) {
+      totalEva += value * weight[key];
+    }
 
     return totalEva
   }
