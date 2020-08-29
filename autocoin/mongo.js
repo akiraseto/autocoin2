@@ -5,9 +5,6 @@ module.exports = class Mongo {
   constructor() {
     const mongo_user = process.env.MONGO_INITDB_ROOT_USERNAME;
     const mongo_pw = process.env.MONGO_INITDB_ROOT_PASSWORD;
-    // todo:ダミー最終で消す
-    // const mongo_user = 'eren';
-    // const mongo_pw = 'yeager';
 
     this.dbUrl = `mongodb://${mongo_user}:${mongo_pw}@mongo:27017`;
     this.dbName = 'autocoin';

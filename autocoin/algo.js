@@ -30,7 +30,6 @@ module.exports = class Algo {
 
     let bullRatio = 0;
     bullRatio = countHigh / range;
-    //正数がbuy判断、負数がsell判断
     if (bullRatio >= ratio) {
       this.eva['bullAlgo'] = 1;
     } else if (bullRatio <= 1 - ratio) {
@@ -39,33 +38,6 @@ module.exports = class Algo {
 
     return bullRatio;
   }
-
-  //
-  // bullAlgo(range, buy_ratio, sell_ratio, list = this.records) {
-  //   //  陽線の割合で売買を判断する
-  //
-  //   let countHigh = 0
-  //   //  任意期間の陽線回数をカウント
-  //   for (let i = range; i > 0; i--) {
-  //     const before = list[list.length - i - 1];
-  //     const after = list[list.length - i];
-  //
-  //     if (before <= after) {
-  //       countHigh += 1;
-  //     }
-  //   }
-  //
-  //   let bullRatio = 0;
-  //   bullRatio = countHigh / range;
-  //   //正数がbuy判断、負数がsell判断
-  //   if (bullRatio >= buy_ratio) {
-  //     this.eva['bullAlgo'] = 1;
-  //   } else if (bullRatio <= sell_ratio) {
-  //     this.eva['bullAlgo'] = -1;
-  //   }
-  //
-  //   return bullRatio;
-  // }
 
 
   crossAlgo(shortMA, longMA, list = this.records) {
@@ -97,7 +69,6 @@ module.exports = class Algo {
     const upper = Math.round(sma + stdev * sigma);
     const lower = Math.round(sma - stdev * sigma);
 
-    //評価ポイント入れる
     const nowPrice = list.pop();
     if (nowPrice <= lower) {
       this.eva['bollingerAlgo'] = 1;
@@ -110,7 +81,7 @@ module.exports = class Algo {
 
 
   tradeAlgo(weight) {
-    //  重み付けして総合的な売買判断
+    //  重み付けして総合的な取引判断
 
     let totalEva = 0
     //評価ポイントにそれぞれの重みを掛けて足し合わせる
@@ -123,6 +94,7 @@ module.exports = class Algo {
 
 
   initEva() {
+    //全評価ポイントを初期化
     Object.keys(this.eva).forEach(key => {
       this.eva[key] = 0;
     });
@@ -130,6 +102,3 @@ module.exports = class Algo {
 
 
 }
-
-
-

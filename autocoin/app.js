@@ -58,7 +58,7 @@ const algoWeight = {
   'crossAlgo': 0.2,
   'bollingerAlgo': 0.7,
 };
-//売買判断の閾値
+//取引判断の閾値
 const algoThreshold = 0.3;
 
 
@@ -151,7 +151,7 @@ const algoThreshold = 0.3;
       } else {
         // 日数を超えてないなら
         //  利益が出ている場合
-        if (openI.pnl >= 0) {
+        if (openI.pnl > 0) {
           label = '利確'
           bbRes = algo.bollingerAlgo(BBProfit.period, BBProfit.sigma);
           totalEva = algo.tradeAlgo(algoWeight)
@@ -171,7 +171,7 @@ const algoThreshold = 0.3;
           }
         } else {
           //  損してる場合
-          //ロスカットはボリンジャーバンドのみで判断
+          //ボリンジャーのみで判断
           //他のアルゴリズムは短いスパンで一過性判断のため除外
           label = 'ロスカット';
 
@@ -215,7 +215,6 @@ const algoThreshold = 0.3;
         };
         mongo.insert(tradeLog);
 
-        //ログ表示する。
         console.log('');
         console.log(label);
         console.log(tradeLog);
@@ -244,7 +243,6 @@ const algoThreshold = 0.3;
       if (nowTime.isSameOrAfter(limitDay)) {
         console.log(' ');
         console.log('スワップポイント対応中_23:30-0:00');
-
         //注文を受け付けない while先頭に移動
         await utils.sleep(tradeInterval * 1000);
         continue;
@@ -288,7 +286,6 @@ const algoThreshold = 0.3;
         console.log(tradeLog);
       }
     }
-
 
     console.log('');
     console.log('★sumProfit: ', sumProfit);
