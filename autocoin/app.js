@@ -39,14 +39,14 @@ const BBOrder = {
 };
 const BBProfit = {
   //利確
-  'period': 9,
-  'sigma': 1.2
+  'period': 15,
+  'sigma': 1.7
 };
 const BBLossCut = {
   //損切り
   //recordはdayで入力
-  'period': 10,
-  'sigma': 3
+  'period': 5,
+  'sigma': 2
 };
 
 // アルゴリズムの重み付け:未使用は0にする
