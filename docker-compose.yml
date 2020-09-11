@@ -5,7 +5,7 @@ services:
     build: .
     container_name: node
     tty: true
-    env_file: ./mongo/.env
+    env_file: .env
     volumes:
       - ./autocoin:/autocoin
     depends_on:
@@ -17,7 +17,7 @@ services:
     restart: always
     environment:
       MONGO_INITDB_DATABASE: autocoin
-    env_file: ./mongo/.env
+    env_file: .env
     ports:
       - 27017:27017
     volumes:

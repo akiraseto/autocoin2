@@ -12,13 +12,13 @@ const line = new Line(config.line_token)
 const utils = require('./utils');
 const Algo = require('./algo');
 
-const orderSize = 0.01;
 //取引間隔(秒)
-const tradeInterval = 60;
+const tradeInterval = 180;
+const orderSize = 0.01;
 //swap日数
 const swapDays = 3;
 //通知用の価格差閾値
-const infoThreshold = 30;
+const infoThreshold = 100;
 
 //bullAlgoの設定値;陽線カウント
 const bullParam = {
@@ -35,18 +35,17 @@ const crossParam = {
 const BBOrder = {
   //注文
   'period': 10,
-  'sigma': 2
+  'sigma': 1.8
 };
 const BBProfit = {
   //利確
-  'period': 15,
-  'sigma': 1.7
+  'period': 10,
+  'sigma': 1
 };
 const BBLossCut = {
-  //損切り
-  //recordはdayで入力
-  'period': 5,
-  'sigma': 2
+  //損切り:日足で判断
+  'period': 10,
+  'sigma': 2.5
 };
 
 // アルゴリズムの重み付け:未使用は0にする
@@ -60,6 +59,8 @@ const algoWeight = {
 };
 //取引判断の閾値
 const algoThreshold = 0.3;
+//ロスカットの閾値
+const lossCutThreshold = 0.5;
 
 
 (async function () {
@@ -70,7 +71,7 @@ const algoThreshold = 0.3;
 
   //(分)レコード作成
   const crypto = new Crypto();
-  const beforeHour = crossParam.longMA * 60;
+  const beforeHour = crossParam.longMA * tradeInterval;
   const timeStamp = nowTime.unix() - beforeHour;
   let records = await crypto.getOhlc(tradeInterval, timeStamp);
 
@@ -112,8 +113,8 @@ const algoThreshold = 0.3;
     let totalEva = 0;
     algo.initEva();
     //共通アルゴリズム
-    const crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA);
-    const bullRes = algo.bullAlgo(bullParam.range, bullParam.ratio)
+    let crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA);
+    let bullRes = algo.bullAlgo(bullParam.range, bullParam.ratio)
 
     //建玉を調べる
     const jsonOpenI = await bitflyer.fetch2('getpositions', 'private', 'GET', {product_code: "FX_BTC_JPY"});
@@ -153,7 +154,7 @@ const algoThreshold = 0.3;
         //  利益が出ている場合
         if (openI.pnl > 0) {
           label = '利確'
-          bbRes = algo.bollingerAlgo(BBProfit.period, BBProfit.sigma);
+          bbRes = algo.bollingerAlgo(BBProfit.period, BBProfit.sigma, openI.price);
           totalEva = algo.tradeAlgo(algoWeight)
 
           //買い建玉で、下降シグナルが出ている
@@ -171,24 +172,26 @@ const algoThreshold = 0.3;
           }
         } else {
           //  損してる場合
-          //ボリンジャーのみで判断
-          //他のアルゴリズムは短いスパンで一過性判断のため除外
           label = 'ロスカット';
 
-          //日にちベースのボリンジャー作成
+          //日足でアルゴリズム判断
           const dayPeriods = 60 * 60 * 24;
           const lossTimeStamp = nowTime.unix() - dayPeriods * BBLossCut.period;
           let dayRecords = await crypto.getOhlc(dayPeriods, lossTimeStamp);
-          bbRes = algo.bollingerAlgo(BBLossCut.period, BBLossCut.sigma, dayRecords);
 
-          //損してるのにデイリーローワーバンドを下回っている(大きなトレンドが下がり兆候)
-          if (openI.side === 'BUY' && nowPrice <= bbRes.lower) {
+          crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA, dayRecords);
+          bullRes = algo.bullAlgo(bullParam.range, bullParam.ratio, dayRecords);
+          bbRes = algo.bollingerAlgo(BBLossCut.period, BBLossCut.sigma, openI.price, dayRecords);
+          totalEva = algo.tradeAlgo(algoWeight)
+
+          //損してるのに、買いを持ってて大きなトレンドが下がり兆候
+          if (openI.side === 'BUY' && totalEva < -lossCutThreshold) {
             await bitflyer.createMarketSellOrder('FX_BTC_JPY', openI.size);
             sumProfit += openI.pnl;
             flag = 'SELL';
 
-            //損してるのにデイリーアッパーバンドを超えている(大きなトレンドで上がり兆候)
-          } else if (openI.side === 'SELL' && nowPrice >= bbRes.upper) {
+            //損してるのに、売りを持ってて大きなトレンドで上がり兆候
+          } else if (openI.side === 'SELL' && totalEva > lossCutThreshold) {
             await bitflyer.createMarketBuyOrder('FX_BTC_JPY', openI.size);
             sumProfit += openI.pnl;
             flag = 'BUY';
