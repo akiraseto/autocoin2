@@ -58,7 +58,7 @@ module.exports = class Algo {
   }
 
 
-  bollingerAlgo(period, sigma, list = this.records) {
+  bollingerAlgo(period, sigma, price = this.records.slice(-1)[0], list = this.records) {
     //  ボリンジャーバンド
 
     const prices = new gauss.Vector(list.slice(-period));
@@ -69,10 +69,9 @@ module.exports = class Algo {
     const upper = Math.round(sma + stdev * sigma);
     const lower = Math.round(sma - stdev * sigma);
 
-    const nowPrice = list.pop();
-    if (nowPrice <= lower) {
+    if (price <= lower) {
       this.eva['bollingerAlgo'] = 1;
-    } else if (nowPrice >= upper) {
+    } else if (price >= upper) {
       this.eva['bollingerAlgo'] = -1;
     }
 
