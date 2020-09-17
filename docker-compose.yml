@@ -7,7 +7,7 @@ services:
     tty: true
     env_file: .env
     volumes:
-      - ./autocoin:/autocoin
+      - ./autocoin:/autocoin2/autocoin
     depends_on:
       - mongo
 

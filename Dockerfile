@@ -1,10 +1,10 @@
 FROM node
 
-WORKDIR /
+WORKDIR /autocoin2
 
-COPY package.json /
-COPY package-lock.json /
+COPY package.json .
+COPY package-lock.json .
 
-RUN npm install --global
+RUN npm install
 
-WORKDIR /autocoin
+CMD node autocoin/app.js
