@@ -1,6 +1,7 @@
 module.exports = {
-  //個人で取得した値を以下に設定してください。
-  apiKey: '',
-  secret: '',
-  line_token: ''
+  //Bitflyer設定
+  apiKey: '[bitflyerのapikey]',
+  secret: '[bitflyerのsecret]',
+  //LineNotify設定
+  line_token: '[lineNotifyのtoken]'
 };

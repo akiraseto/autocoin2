@@ -10,8 +10,8 @@ module.exports = class Mongo {
     this.dbName = 'autocoin';
     this.cName = 'btcfx';
     this.dbOptions = {
-      useUnifiedTopology : true,
-      useNewUrlParser : true
+      useUnifiedTopology: true,
+      useNewUrlParser: true
     };
   }
 

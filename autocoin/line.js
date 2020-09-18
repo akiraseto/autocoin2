@@ -22,7 +22,7 @@ module.exports = class Line {
           message: message
         }
       };
-      request(options,(err, response, body) => {
+      request(options, (err, response, body) => {
         resolve(JSON.parse(body))
       });
     })

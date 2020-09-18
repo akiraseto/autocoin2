@@ -8,13 +8,13 @@ module.exports = class Algo {
     // 各アルゴリズムの評価ポイント
     //上昇シグナル:+  下降シグナル:-
     this.eva = {
-      'bullAlgo': 0,
+      'psychoAlgo': 0,
       'crossAlgo': 0,
       'bollingerAlgo': 0
     };
   }
 
-  bullAlgo(range, ratio, list = this.records) {
+  psychoAlgo(range, ratio, list = this.records) {
     //  陽線の割合で売買を判断する
 
     let countHigh = 0
@@ -28,15 +28,15 @@ module.exports = class Algo {
       }
     }
 
-    let bullRatio = 0;
-    bullRatio = countHigh / range;
-    if (bullRatio >= ratio) {
-      this.eva['bullAlgo'] = 1;
-    } else if (bullRatio <= 1 - ratio) {
-      this.eva['bullAlgo'] = -1;
+    let psychoRatio = 0;
+    psychoRatio = countHigh / range;
+    if (psychoRatio >= ratio) {
+      this.eva['psychoAlgo'] = 1;
+    } else if (psychoRatio <= 1 - ratio) {
+      this.eva['psychoAlgo'] = -1;
     }
 
-    return bullRatio;
+    return psychoRatio;
   }
 
 
@@ -62,7 +62,7 @@ module.exports = class Algo {
     //  ボリンジャーバンド
 
     const prices = new gauss.Vector(list.slice(-period));
-    //今回はSMAを使う
+    //SMA使用
     const sma = prices.sma(period).pop();
     const stdev = prices.stdev()
 
@@ -87,6 +87,8 @@ module.exports = class Algo {
     for (const [key, value] of Object.entries(this.eva)) {
       totalEva += value * weight[key];
     }
+
+    totalEva = Math.round(totalEva * 100) / 100
 
     return totalEva
   }

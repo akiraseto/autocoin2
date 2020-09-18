@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-ssh -i ~/.ssh/keypair_aws.pem ec2-user@54.150.221.242 <<EOC
+ssh -i ~/.ssh/[pem file] [AWS EC2のuser]@[IPアドレス] <<EOC
 docker-compose -f ./autocoin2/docker-compose.yml down
 EOC

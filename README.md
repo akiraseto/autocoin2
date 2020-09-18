@@ -1,130 +1,197 @@
-# autocoin2
+# Autocoin2
 
-- オブジェクト指向
-
-- Line Chat制御
-- アルゴリズム追加・改良
+BitCoinのFX自動売買プログラム。   
+BitflyerのAPIを利用して、node.jsにて仮想通貨トレードを自動化。
 
 
----
+## Features
 
-BitflyerのAPIを利用して、node.jsにて仮想通貨トレードを自動化する。
+- 売り・買いポジション両方対応
+- 複数アルゴリズムによる重み付け売買判断
+- MongoDBによる売買履歴の保存
+- Docker対応
+- プログラム開始をLine通知
+- 損得金額の閾値を超えたら、Lineにて通知
+- 設定の日数が経過したら、ポジションを自動で手放す機能 :SWAP金回避
+- 日付変更30分前には、新たなポジション取得を抑制する機能 :SWAP金回避
+- Apple Home連携で外出先でもiphoneから1タップでON/OFF *条件あり*
+- プログラム稼働中でも、並行して通常の人的トレードも可能
 
-## アルゴリズム
-- 間隔 60秒  (cryptowatchAPI最小が1分なため)
+### Trade Algorithm
 
-- 移動平均線
-損しないのを重要視するため、値動きに敏感なものを採用
-    - EMA移動平均線を採用
-    - 短期:5分、長期:30分の移動平均線とする。
+- ボリンジャーバンド
+- ゴールデンクロス・デッドクロス
+- サイコロジカルライン
 
-- 買い注文判断  AND両方当てはまる場合
-    - ゴールデンクロス
-    - 5回中3回が上昇だった場合(3回連続上昇の判断は遅すぎる)
-    - 成行注文
+デフォルト設定は、ボリンジャーに重みを持たせた3アルゴリズムの複合判断。  
+アルゴリズムの重み付けはハイパーパラメーターを通して変更可能。また、アルゴリズムの追加も考慮した設計。
 
-- 売り注文判断 OR
-    - 利確  指値で購入価格の数%
-    - ロスカット  指値で購入価格の-数%
-    - 5回中下降傾向が多かった場合、即成行きで売る
-    - デッドクロス  成行きで即売り
-    (下がる兆候が強い、上がる見込みが無いため確定する)
+#### Loss Cut Algorithm
 
-- スワップポイント対策  
-23:55-0:05の間
-    - 注文を受け付けない
-    - 買建玉を成行で売る
+日足によるアルゴリズム判断   
+分単位のトレンド判断ではロス判断するのには、かなり刹那的、流動的と考慮の為。   
+*分足や、時間足など判断スパンを変更することも可能。*
 
-- LineNotifyのお知らせ機能  
-    節目の金額ごと(alertUnit)にLineNotifyで自動通知する
+## Requirement
 
-## ccxt
-bitflyerのAPIラッパー  
-ccxtモジュールを通してbitflyerからLTP取得、売買の通信を行う
-
+### ccxt
+bitflyerのAPIラッパー。bitflyerからLTP取得、売買命令を実行   
 [https://github.com/ccxt/ccxt](https://github.com/ccxt/ccxt)
 
-## cryptowatch
-起動時、EMA算出用にLTP値を一定時間取得
+### cryptowatch
+起動時、設定した時間枠・間隔のOHLC値を取得   
+apiドキュメント: [https://docs.cryptowat.ch/rest-api/](https://docs.cryptowat.ch/rest-api/)
 
-apiドキュメント  
-[https://developer.cryptowat.ch/reference/rest-api-getting-started](https://developer.cryptowat.ch/reference/rest-api-getting-started)
 
-使用メモ  
-bitflyerの1日の値動き  
-afterにいつからの日付かを指定（以下は2018/11/20）  
-periodsに秒数をいれることで間隔を設定 1時間3600 1日86400  
-`https://api.cryptowat.ch/markets/bitflyer/btcfxjpy/ohlc?periods=86400&after=1542668714`
-
-無料枠  
-cpu allowance  = 4秒 /1時間
-
-OHLC ローソク足のこと  
-open high low close
-始値 高値 低値 終値   をチャートにするって意味  
-ローソク足→Candle Chartの欧米正式名称
-
-## gauss
-移動平均計算ライブラリ  
+### gauss
+計算ライブラリ  
 [https://github.com/fredrick/gauss](https://github.com/fredrick/gauss)
 
-## MongoDB
-MongoDBを利用して売買ログを記録
 
-db名:autocoin
-collection名: btcfx
+### mongodb
+MongoDBに売買ログを記録
 
-### Mac
-構築手順
 
-```shell
+### moment
+日時計算ライブラリ
 
-brew install mongodb
 
-#自動起動に設定
-brew services start mongodb
+## Installation
+
+### Bitflyerの登録・APIのkey,secret取得
+
+[Bitflyer](https://bitflyer.com/ja-jp/)  
+[API Documentation](https://lightning.bitflyer.com/docs)
+
+
+### LineNotifyの登録・tokenの発行
+
+tokenを発行して、Line Notifyの通知機能を利用する。  
+[LINE Notify](https://notify-bot.line.me/ja/)
+
+
+### config.js作成
+
+Bitflyer,LineのAPIを設定。
+
+```bash
+#ファイル名変更
+cp autocoin/config_sample.js autocoin/config.js
+
+#取得したkey,secret,tokenを入力。
+```
+
+
+### .env作成
+
+MongoDBのuser,passwordを設定。
+
+```bash
+#ファイル名変更
+cp .env_sample .env
+
+#MongoDBのuser,passwordを入力
+```
+
+
+## Usage
+
+### 実行
+
+```bash
+docker-compose up -d
+```
+
+
+### 停止
+
+```bash
+docker-compose down
+```
+
+
+### ログ確認
+node containerの標準出力によるログの確認
+
+```bash
+docker logs -f node
+```
+
+
+### MongoDBの取引内容確認
+
+```bash
+docker exec -it mongo bash
+mongo -u <username> -p
+<password>
+
+#mongo login
+use autocoin;
+db.btcfx.find();
+```
+
+
+## Note
+
+- トレード間隔は、最短60秒  (取引情報取得のcryptowatchAPIが最小単位を1分としている為)
+- cryptowatchの無料枠の負荷率: cpu allowance = 4sec / 1hour
+
+### Apple Home連携
+iphone,AppleWatchからプログラムのON/OFF
+
+以下の条件・手順が必要
+
+1. AWS EC2インスタンスにDockerを展開
+2. AWS sshのインバウンド設定を有効、Elastic IPにて固定IPを取得
+3. 自宅にRaspberry Piなどのオンプレミス運用 (以降ラズパイ)
+4. ラズパイにhomebridgeをインストール
+5. homebridgeのconfig.jsにon/offをボタンを設定し、実行プログラムを紐付ける
+6. 実行プログラムにAWSのuser,IPアドレス, pemファイルを設定
+
+#### homebridgeの設定は以下を参照
+[homebridge](https://www.npmjs.com/package/homebridge)
+
+#### ラズパイ上の実行ファイル
+
+```bash
+#実行プログラム ファイル名変更
+cp homebridge_AWS/startAWS_sample.sh homebridge_AWS/startAWS.sh
+cp homebridge_AWS/stopAWS_sample.sh homebridge_AWS/stopAWS.sh
+#任意の値を設定
 
 ```
 
-### Ubuntu18.04
-構築手順
 
-```shell
+## Author
 
-#パッケージ管理システムに公開鍵を登録
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
+- akinko
+- akira.seto@gmail.com
+- [Qiita](https://qiita.com/akinko)
 
-#ダウンロード用のリストファイルを作成
-echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.0.list
 
-#パッケージ管理システムのデータベースをリロード
-sudo apt-get update
+## License
 
-#最新の安定版をインストール
-sudo apt-get install -y mongodb-org
+[MIT license](https://en.wikipedia.org/wiki/MIT_License).
 
-#MongoDBを自動起動にする
-sudo systemctl enable mongod
 
-#MongoDBを起動
-sudo service mongod start
-```
 
-## LineNotify
-accessTokenを発行して、Lineでお知らせを受け取る。  
-[https://notify-bot.line.me/ja/](https://notify-bot.line.me/ja/)
 
-## config.js
-Gitで共有していない、key,passwordなどの設定ファイル。  
-以下の内容となる。
 
-config.js
 
-```js
-module.exports = {
-  apiKey: 'bitflyerのapikey',
-  secret: 'bitflyerのsecret',
-  line_token: 'lineNotifyのアクセストークン'
-};
 
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

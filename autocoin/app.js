@@ -1,7 +1,7 @@
 'use strict';
 const config = require('./config');
 const moment = require('moment');
-const ccxt = require ('ccxt');
+const ccxt = require('ccxt');
 const bitflyer = new ccxt.bitflyer(config);
 
 const Crypto = require('./crypto')
@@ -14,14 +14,15 @@ const Algo = require('./algo');
 
 //取引間隔(秒)
 const tradeInterval = 180;
+//取引量
 const orderSize = 0.01;
 //swap日数
 const swapDays = 3;
 //通知用の価格差閾値
 const infoThreshold = 100;
 
-//bullAlgoの設定値;陽線カウント
-const bullParam = {
+//psychoAlgoの設定値;陽線カウント
+const psychoParam = {
   'range': 10,
   'ratio': 0.7,
 };
@@ -35,7 +36,7 @@ const crossParam = {
 const BBOrder = {
   //注文
   'period': 10,
-  'sigma': 1.8
+  'sigma': 1.7
 };
 const BBProfit = {
   //利確
@@ -50,10 +51,10 @@ const BBLossCut = {
 
 // アルゴリズムの重み付け:未使用は0にする
 const algoWeight = {
-  // 'bullAlgo': 0,
+  // 'psychoAlgo': 0,
   // 'crossAlgo': 0,
   // 'bollingerAlgo': 1,
-  'bullAlgo': 0.1,
+  'psychoAlgo': 0.1,
   'crossAlgo': 0.2,
   'bollingerAlgo': 0.7,
 };
@@ -114,7 +115,7 @@ const lossCutThreshold = 0.5;
     algo.initEva();
     //共通アルゴリズム
     let crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA);
-    let bullRes = algo.bullAlgo(bullParam.range, bullParam.ratio)
+    let psychoRes = algo.psychoAlgo(psychoParam.range, psychoParam.ratio)
 
     //建玉を調べる
     const jsonOpenI = await bitflyer.fetch2('getpositions', 'private', 'GET', {product_code: "FX_BTC_JPY"});
@@ -180,7 +181,7 @@ const lossCutThreshold = 0.5;
           let dayRecords = await crypto.getOhlc(dayPeriods, lossTimeStamp);
 
           crossRes = algo.crossAlgo(crossParam.shortMA, crossParam.longMA, dayRecords);
-          bullRes = algo.bullAlgo(bullParam.range, bullParam.ratio, dayRecords);
+          psychoRes = algo.psychoAlgo(psychoParam.range, psychoParam.ratio, dayRecords);
           bbRes = algo.bollingerAlgo(BBLossCut.period, BBLossCut.sigma, openI.price, dayRecords);
           totalEva = algo.tradeAlgo(algoWeight)
 
@@ -213,7 +214,7 @@ const lossCutThreshold = 0.5;
           openI: openI,
           bollinger: bbRes,
           cross: crossRes,
-          bull: bullRes,
+          psycho: psychoRes,
           totalEva: totalEva,
         };
         mongo.insert(tradeLog);
@@ -277,7 +278,7 @@ const lossCutThreshold = 0.5;
           nowPrice: nowPrice,
           bollinger: bbRes,
           cross: crossRes,
-          bull: bullRes,
+          psycho: psychoRes,
           totalEva: totalEva,
           strTime: strTime,
           created_at: nowTime._d,
@@ -295,4 +296,4 @@ const lossCutThreshold = 0.5;
     console.log('');
     await utils.sleep(tradeInterval * 1000);
   }
-}) ();
+})();

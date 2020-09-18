@@ -99,8 +99,7 @@ dist
 .idea
 
 autocoin/config.js
-/startAWS.sh
-/stopAWS.sh
-/junit.xml
 container_data
 /autocoin/sample/
+/homebridge_AWS/startAWS.sh
+/homebridge_AWS/stopAWS.sh
